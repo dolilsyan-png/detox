@@ -823,14 +823,15 @@ function exMaze(){
   function setup(){sizeCanvas();genMaze(sizeFor(level));
     wallT=Math.max(2,Math.round(size/C*0.12));cellPx=Math.floor((size-wallT)/C);off=Math.round((size-(cellPx*C+wallT))/2);half=Math.max(3,Math.floor(cellPx*0.15));
     buildWalls();buildOcc();
-    half=Math.max(4,Math.floor(cellPx*0.42));
+    half=Math.max(3,Math.floor(cellPx*0.18));
     respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
   function cellCenter(cx,cy){return [off+cx*cellPx+(cellPx+wallT)/2, off+cy*cellPx+(cellPx+wallT)/2];}
   function respawn(){const c=cellCenter(startc.x,startc.y);px=c[0];py=c[1];vx=vy=0;}
-  function hitWall(x,y){const l=x-half,r=x+half,t=y-half,b=y+half;for(const w of walls){if(r>w[0]&&l<w[0]+w[2]&&b>w[1]&&t<w[1]+w[3])return true;}return false;}
+  // collision via occ bitmap — checks 4 corners of player square
+  function hitWall(x,y){const h=half+1;return blocked(x-h,y-h)||blocked(x+h,y-h)||blocked(x-h,y+h)||blocked(x+h,y+h);}
   function loop(){if(ended)return;
     vx=(vx+jx*ACC)*FR;vy=(vy+jy*ACC)*FR;
-    const steps=6;let hit=false;
+    const steps=8;let hit=false;
     for(let i=0;i<steps;i++){const nx=px+vx/steps,ny=py+vy/steps;if(hitWall(nx,ny)){hit=true;break;}px=nx;py=ny;}
     if(hit){deaths++;document.getElementById('mzDeath').textContent=deaths;respawn();}
     const g=cellCenter(goalc.x,goalc.y);
