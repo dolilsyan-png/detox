@@ -20,7 +20,7 @@
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
-  body{background:radial-gradient(120% 80% at 50% -10%, rgba(198,244,50,.07), transparent 55%), var(--bg);
+  body{background:linear-gradient(160deg,#0d110c 0%,#0a0c0a 40%,#090b09 100%);
     color:var(--ink);font-family:'Sora',system-ui,sans-serif;overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
   #app{max-width:520px;margin:0 auto;min-height:100%;padding-bottom:calc(80px + var(--safe-b))}
   header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(10,12,10,.95),rgba(10,12,10,.6));border-bottom:1px solid var(--line);padding:14px 18px 12px;}
@@ -822,7 +822,7 @@ function exMaze(){
   function blocked(x,y){const xi=x|0,yi=y|0;if(xi<0||yi<0||xi>=size||yi>=size)return true;return occ[yi*size+xi]===1;}
   function setup(){sizeCanvas();genMaze(sizeFor(level));
     wallT=Math.max(2,Math.round(size/C*0.12));cellPx=Math.floor((size-wallT)/C);off=Math.round((size-(cellPx*C+wallT))/2);half=Math.max(3,Math.floor(cellPx*0.15));
-    buildWalls();buildOcc();respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
+    buildWalls();buildOcc();rebuildScene();respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
   function cellCenter(cx,cy){return [off+cx*cellPx+(cellPx+wallT)/2, off+cy*cellPx+(cellPx+wallT)/2];}
   function respawn(){const c=cellCenter(startc.x,startc.y);px=c[0];py=c[1];vx=vy=0;}
   function hitWall(x,y){const l=x-half,r=x+half,t=y-half,b=y+half;for(const w of walls){if(r>w[0]&&l<w[0]+w[2]&&b>w[1]&&t<w[1]+w[3])return true;}return false;}
@@ -834,40 +834,44 @@ function exMaze(){
     const g=cellCenter(goalc.x,goalc.y);
     if(Math.abs(px-g[0])<cellPx*0.4&&Math.abs(py-g[1])<cellPx*0.4){win();return;}
     draw();raf=requestAnimationFrame(loop);}
-  function draw(){
-    // 1. black background
-    ctx.fillStyle='#000';ctx.fillRect(0,0,size,size);
-    // 2. build visibility polygon
-    const R=cellPx*2.2,rays=200,step=Math.max(1,R/40);const poly=[];
-    for(let i=0;i<rays;i++){const ang=i/rays*Math.PI*2,dx=Math.cos(ang),dy=Math.sin(ang);let dist=0,hx=px,hy=py;
-      while(dist<R){dist+=step;const nx=px+dx*dist,ny=py+dy*dist;if(blocked(nx,ny))break;hx=nx;hy=ny;}poly.push([hx,hy]);}
-    // 3. floor — only inside visibility (clip, fill, restore)
-    ctx.save();
-    ctx.beginPath();ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();ctx.clip();
-    ctx.fillStyle='#0d1a0d';ctx.fillRect(0,0,size,size);
-    // radial fade inside clip
-    const grd=ctx.createRadialGradient(px,py,R*0.45,px,py,R);
-    grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,0.88)');
-    ctx.fillStyle=grd;ctx.fillRect(0,0,size,size);
-    ctx.restore();
-    // 4. fog — black everywhere OUTSIDE visibility polygon (evenodd, no clip)
-    ctx.fillStyle='#000';
-    ctx.beginPath();ctx.rect(0,0,size,size);
-    ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();
-    ctx.fill('evenodd');
-    // 5. walls — drawn WITHOUT clip so lines are never cut by polygon edge
-    ctx.strokeStyle='#19d3e6';ctx.lineWidth=wallT;ctx.lineCap='square';ctx.lineJoin='miter';
-    ctx.beginPath();
+  // offscreen canvas for wall scene
+  let offCV=null,offCX=null;
+  function rebuildScene(){
+    offCV=document.createElement('canvas');offCV.width=size;offCV.height=size;offCX=offCV.getContext('2d');
+    offCX.fillStyle='#0d1a0d';offCX.fillRect(0,0,size,size);
+    offCX.strokeStyle='#19d3e6';offCX.lineWidth=wallT;offCX.lineCap='square';offCX.lineJoin='miter';
+    offCX.beginPath();
     for(let wy=0;wy<C;wy++)for(let wx=0;wx<C;wx++){const c=cells[wy*C+wx];
       const ox=off+wx*cellPx,oy=off+wy*cellPx,ex=ox+cellPx,ey=oy+cellPx;
-      if(c.n){ctx.moveTo(ox,oy);ctx.lineTo(ex,oy);}
-      if(c.w){ctx.moveTo(ox,oy);ctx.lineTo(ox,ey);}
-      if(wx===C-1&&c.e){ctx.moveTo(ex,oy);ctx.lineTo(ex,ey);}
-      if(wy===C-1&&c.s){ctx.moveTo(ox,ey);ctx.lineTo(ex,ey);}}
-    ctx.stroke();
-    // 6. goal and player on top
+      if(c.n){offCX.moveTo(ox,oy);offCX.lineTo(ex,oy);}
+      if(c.w){offCX.moveTo(ox,oy);offCX.lineTo(ox,ey);}
+      if(wx===C-1&&c.e){offCX.moveTo(ex,oy);offCX.lineTo(ex,ey);}
+      if(wy===C-1&&c.s){offCX.moveTo(ox,ey);offCX.lineTo(ex,ey);}}
+    offCX.stroke();
+    // goal
     const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;
-    ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
+    offCX.fillStyle='#ff3b2f';offCX.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
+  }
+  function draw(){
+    if(!offCV)return;
+    // 1. build visibility polygon — rays stop at wall pixels
+    const R=cellPx*2.4,rays=240,step=Math.max(1,R/48);const poly=[];
+    for(let i=0;i<rays;i++){const ang=i/rays*Math.PI*2,dx=Math.cos(ang),dy=Math.sin(ang);let dist=0,hx=px,hy=py;
+      while(dist<R){dist+=step;const nx=px+dx*dist,ny=py+dy*dist;if(blocked(nx,ny))break;hx=nx;hy=ny;}poly.push([hx,hy]);}
+    // 2. black background
+    ctx.fillStyle='#000';ctx.fillRect(0,0,size,size);
+    // 3. clip to visibility polygon, draw offscreen scene (floor+walls+goal) inside
+    ctx.save();
+    ctx.beginPath();ctx.moveTo(poly[0][0],poly[0][1]);
+    for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);
+    ctx.closePath();ctx.clip();
+    ctx.drawImage(offCV,0,0);
+    // radial fade toward vision edge
+    const grd=ctx.createRadialGradient(px,py,R*0.5,px,py,R);
+    grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,0.85)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,size,size);
+    ctx.restore();
+    // 4. player always visible on top (no clip)
     ctx.fillStyle='#c6f432';ctx.fillRect(px-half,py-half,half*2,half*2);}
   function win(){beep();if((S.best.maze||0)<Math.min(level,MAXLVL)){S.best.maze=Math.min(level,MAXLVL);document.getElementById('mzBest').textContent=S.best.maze;}markTrained();save();
     if(level>=MAXLVL){showOver('good','🏁 30/30','Все тридцать уровней пройдены. Лабиринты тебе больше не страшны. Дальше — просто для удовольствия.');setup();raf=requestAnimationFrame(loop);return;}
@@ -1139,21 +1143,26 @@ function startWorkout(){
 
   function resultsScreen(){
     let diff=0;
-    let html='<div style="font-family:Unbounded,sans-serif;font-weight:700;font-size:18px;margin-bottom:12px">Итоги тренировки</div>';
+    const diffEmoji=['😇','💧','🤖','💪','👹','🏋️','💀','😈','☠️','🔥'];
+    let html='<div style="font-family:Unbounded,sans-serif;font-weight:700;font-size:16px;margin-bottom:12px">💪 Итоги тренировки</div>';
     results.forEach(r=>{
-      const setsStr=r.actuals.length?r.actuals.join(' · '):'—';
+      const setsStr=r.actuals.length?r.actuals.map((v,i)=>'<span style="color:var(--acid)">'+v+'</span>').join('<span style="color:var(--ink-faint)"> · </span>'):'—';
       html+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
-        '<div style="font-size:13px;margin-bottom:4px">'+r.name+'</div>'+
-        '<div style="font-family:Space Mono,monospace;font-size:12px;color:var(--acid)">'+setsStr+
-        '<span style="color:var(--ink-faint)"> / цель '+r.target+'×'+r.sets+'</span></div></div>';
+        '<div style="font-size:13px;margin-bottom:5px">'+r.name+'</div>'+
+        '<div style="font-family:Space Mono,monospace;font-size:13px">'+setsStr+
+        '<span style="color:var(--ink-faint);font-size:11px"> / цель '+r.target+' × '+r.sets+'</span></div></div>';
     });
-    html+='<div style="margin:14px 0 4px;font-size:13px">Насколько было тяжело? (1-10)</div>'+
-      '<div class="diffrow" id="diffRow"></div>'+
-      '<button class="btn go" id="saveWk" style="margin-top:12px">СОХРАНИТЬ ТРЕНИРОВКУ</button>';
+    html+='<div style="margin:16px 0 8px;font-size:13px">Насколько было тяжело?</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:14px" id="diffRow"></div>'+
+      '<button class="btn go" id="saveWk">СОХРАНИТЬ ТРЕНИРОВКУ</button>';
     mBody.innerHTML=html;
     const dr=document.getElementById('diffRow');
-    for(let n=1;n<=10;n++){const x=document.createElement('div');x.className='diffbtn';x.textContent=n;
-      x.onclick=()=>{diff=n;dr.querySelectorAll('.diffbtn').forEach(y=>y.classList.remove('on'));x.classList.add('on');};dr.appendChild(x);}
+    for(let n=1;n<=10;n++){
+      const x=document.createElement('div');
+      x.style.cssText='aspect-ratio:1;border:1px solid var(--line);background:var(--panel);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:.1s;font-size:18px';
+      x.innerHTML=diffEmoji[n-1]+'<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--ink-faint)">'+n+'</span>';
+      x.onclick=()=>{diff=n;dr.querySelectorAll('div').forEach(y=>{y.style.background='var(--panel)';y.style.borderColor='var(--line)';});x.style.background='rgba(198,244,50,.15)';x.style.borderColor='var(--acid)';};
+      dr.appendChild(x);}
     document.getElementById('saveWk').onclick=()=>{
       const logItems=results.map(r=>({name:r.name,target:r.target,sets:r.sets,actuals:r.actuals,actual:r.actuals.join('·')||r.target}));
       if(!S.body.start)S.body.start=Date.now();
