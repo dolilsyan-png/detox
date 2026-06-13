@@ -827,8 +827,35 @@ function exMaze(){
     respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
   function cellCenter(cx,cy){return [off+cx*cellPx+(cellPx+wallT)/2, off+cy*cellPx+(cellPx+wallT)/2];}
   function respawn(){const c=cellCenter(startc.x,startc.y);px=c[0];py=c[1];vx=vy=0;}
-  // collision via occ bitmap — checks 4 corners of player square
-  function hitWall(x,y){const h=half+1;return blocked(x-h,y-h)||blocked(x+h,y-h)||blocked(x-h,y+h)||blocked(x+h,y+h);}
+  // cell coords from pixel pos
+  function cellOf(x,y){return{cx:Math.floor((x-off)/cellPx),cy:Math.floor((y-off)/cellPx)};}
+  function inBounds(cx,cy){return cx>=0&&cy>=0&&cx<C&&cy<C;}
+  // wall between cell (cx,cy) and neighbour in direction: pixel boundary position and axis
+  // returns true if pixel point x,y is inside any wall rectangle (built with wallT thickness, centered on cell boundary)
+  function hitWall(x,y){
+    const h=half;
+    // test all 4 corners + 4 edge midpoints of player square
+    const pts=[[x-h,y-h],[x+h,y-h],[x-h,y+h],[x+h,y+h],[x,y-h],[x,y+h],[x-h,y],[x+h,y]];
+    for(const[px2,py2] of pts){
+      // out of maze area
+      if(px2<off||py2<off||px2>off+C*cellPx+wallT||py2>off+C*cellPx+wallT)return true;
+      const cx=Math.floor((px2-off)/cellPx),cy=Math.floor((py2-off)/cellPx);
+      // position within cell (0..1)
+      const lx=(px2-off)/cellPx-cx,ly=(py2-off)/cellPx-cy;
+      const wf=wallT/cellPx; // wall fraction
+      if(!inBounds(cx,cy))return true;
+      const cell=cells[cy*C+cx];
+      // near north wall
+      if(ly<wf&&cell.n)return true;
+      // near south wall
+      if(ly>1-wf&&(cy+1>=C||(inBounds(cx,cy+1)&&cells[(cy+1)*C+cx].n)))return true;
+      // near west wall
+      if(lx<wf&&cell.w)return true;
+      // near east wall
+      if(lx>1-wf&&(cx+1>=C||(inBounds(cx+1,cy)&&cells[cy*C+cx+1].w)))return true;
+    }
+    return false;
+  }
   function loop(){if(ended)return;
     vx=(vx+jx*ACC)*FR;vy=(vy+jy*ACC)*FR;
     const steps=8;let hit=false;
