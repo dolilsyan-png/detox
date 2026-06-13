@@ -835,28 +835,34 @@ function exMaze(){
     if(Math.abs(px-g[0])<cellPx*0.4&&Math.abs(py-g[1])<cellPx*0.4){win();return;}
     draw();raf=requestAnimationFrame(loop);}
   function draw(){ctx.fillStyle='#000';ctx.fillRect(0,0,size,size);
-    // draw walls as stroked lines — no overlap artifacts at corners
+    // build visibility polygon first
+    const R=cellPx*2.2,rays=180,step=Math.max(1.5,R/36);const poly=[];
+    for(let i=0;i<rays;i++){const ang=i/rays*Math.PI*2,dx=Math.cos(ang),dy=Math.sin(ang);let dist=0,hx=px,hy=py;
+      while(dist<R){dist+=step;const nx=px+dx*dist,ny=py+dy*dist;if(blocked(nx,ny))break;hx=nx;hy=ny;}poly.push([hx,hy]);}
+    // clip to visibility polygon and draw everything inside it
+    ctx.save();
+    ctx.beginPath();ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();ctx.clip();
+    // floor
+    ctx.fillStyle='#0d1a0d';ctx.fillRect(0,0,size,size);
+    // walls — stroked lines, drawn inside clip so no artifacts outside vision
     ctx.strokeStyle='#19d3e6';ctx.lineWidth=wallT;ctx.lineCap='square';ctx.lineJoin='miter';
     ctx.beginPath();
-    for(let y=0;y<C;y++)for(let x=0;x<C;x++){const c=cells[y*C+x];const ox=off+x*cellPx+wallT/2,oy=off+y*cellPx+wallT/2,ex=ox+cellPx-wallT,ey=oy+cellPx-wallT;
-      if(c.n){ctx.moveTo(ox,oy);ctx.lineTo(ex+wallT,oy);}
-      if(c.w){ctx.moveTo(ox,oy);ctx.lineTo(ox,ey+wallT);}
-      if(x===C-1&&c.e){ctx.moveTo(ex+wallT,oy);ctx.lineTo(ex+wallT,ey+wallT);}
-      if(y===C-1&&c.s){ctx.moveTo(ox,ey+wallT);ctx.lineTo(ex+wallT,ey+wallT);}}
+    for(let y=0;y<C;y++)for(let x=0;x<C;x++){const c=cells[y*C+x];
+      const ox=off+x*cellPx,oy=off+y*cellPx,ex=ox+cellPx,ey=oy+cellPx;
+      if(c.n){ctx.moveTo(ox,oy);ctx.lineTo(ex,oy);}
+      if(c.w){ctx.moveTo(ox,oy);ctx.lineTo(ox,ey);}
+      if(x===C-1&&c.e){ctx.moveTo(ex,oy);ctx.lineTo(ex,ey);}
+      if(y===C-1&&c.s){ctx.moveTo(ox,ey);ctx.lineTo(ex,ey);}}
     ctx.stroke();
-    const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
+    // goal and player
+    const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;
+    ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
     ctx.fillStyle='#c6f432';ctx.fillRect(px-half,py-half,half*2,half*2);
-    // line-of-sight light: лучи останавливаются о стены, за стеной — темнота
-    const R=cellPx*2.0,rays=140,step=Math.max(2,R/28);const poly=[];
-    for(let i=0;i<rays;i++){const ang=i/rays*Math.PI*2,dx=Math.cos(ang),dy=Math.sin(ang);let dist=0,hx=px,hy=py;
-      while(dist<R){dist+=step;const nx=px+dx*dist,ny=py+dy*dist;hx=nx;hy=ny;if(blocked(nx,ny))break;}poly.push([hx,hy]);}
-    // тьма всюду, кроме полигона видимости
-    ctx.fillStyle='#000';ctx.beginPath();ctx.rect(0,0,size,size);
-    ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();ctx.fill('evenodd');
-    // мягкое затухание к краю света
-    ctx.save();ctx.beginPath();ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();ctx.clip();
-    const grd=ctx.createRadialGradient(px,py,R*0.4,px,py,R);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,0.85)');
-    ctx.fillStyle=grd;ctx.fillRect(0,0,size,size);ctx.restore();}
+    // radial fade at vision edge
+    const grd=ctx.createRadialGradient(px,py,R*0.45,px,py,R);
+    grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,0.9)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,size,size);
+    ctx.restore();}
   function win(){beep();if((S.best.maze||0)<Math.min(level,MAXLVL)){S.best.maze=Math.min(level,MAXLVL);document.getElementById('mzBest').textContent=S.best.maze;}markTrained();save();
     if(level>=MAXLVL){showOver('good','🏁 30/30','Все тридцать уровней пройдены. Лабиринты тебе больше не страшны. Дальше — просто для удовольствия.');setup();raf=requestAnimationFrame(loop);return;}
     level++;setup();raf=requestAnimationFrame(loop);}
