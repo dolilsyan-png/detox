@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0c0a">
+<title>detoX</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Mono:wght@400;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c0a;--panel:#11160f;--panel-2:#171f14;--line:#222c1d;
+    --ink:#e8f0e8;--ink-dim:#8a9a8c;--ink-faint:#566058;
+    --acid:#c6f432;--acid-deep:#9bcf00;--hazard:#ff4d3d;--gold:#ffce4a;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:radial-gradient(120% 80% at 50% -10%, rgba(198,244,50,.07), transparent 55%), var(--bg);
+    color:var(--ink);font-family:'Sora',system-ui,sans-serif;overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
+  #app{max-width:520px;margin:0 auto;min-height:100%;padding-bottom:calc(80px + var(--safe-b))}
+  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(10,12,10,.95),rgba(10,12,10,.6));border-bottom:1px solid var(--line);padding:14px 18px 12px;}
+  .logo{font-family:'Unbounded',sans-serif;font-weight:900;font-size:25px;letter-spacing:-1px;line-height:1;display:flex;align-items:center;gap:1px}
+  .logo .x{color:var(--bg);background:var(--acid);padding:0 6px;border-radius:6px;display:inline-block}
+  .tagline{font-size:10.5px;color:var(--ink-faint);letter-spacing:2px;text-transform:uppercase;margin-top:6px}
+  .view{display:none;padding:18px;animation:fade .3s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  h2.section{font-family:'Unbounded',sans-serif;font-weight:700;font-size:19px;letter-spacing:-.5px;margin:2px 0 4px}
+  .sub{color:var(--ink-dim);font-size:13px;line-height:1.5;margin-bottom:16px}
+  .grouplbl{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-faint);margin:18px 0 9px}
+  /* LEVEL CARD */
+  .lvlcard{border:1px solid var(--line);background:linear-gradient(135deg,var(--panel-2),var(--panel));border-radius:18px;padding:18px;margin-bottom:16px}
+  .lvltop{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+  .lvln{font-family:'Unbounded',sans-serif;font-weight:900;font-size:40px;line-height:.9;color:var(--acid)}
+  .lvln small{font-size:13px;color:var(--ink-faint);font-weight:700}
+  .lvlrank{font-family:'Space Mono',monospace;font-size:11px;color:var(--ink-dim);text-align:right;max-width:55%;line-height:1.4}
+  .lvlbar{height:8px;background:var(--bg);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+  .lvlbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--acid-deep),var(--acid));transition:width .5s}
+  .lvlmeta{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:11px;color:var(--ink-faint);margin-top:8px}
+  .phasechip{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;color:var(--acid);border:1px solid var(--acid);border-radius:99px;padding:4px 11px;margin-bottom:14px}
+  /* TASKS */
+  .task{display:flex;gap:13px;align-items:flex-start;padding:14px;border:1px solid var(--line);background:var(--panel);border-radius:14px;margin-bottom:9px;cursor:pointer;transition:.15s;}
+  .task:active{transform:scale(.985)}
+  .task.on{border-color:rgba(198,244,50,.5);background:linear-gradient(90deg,rgba(198,244,50,.08),var(--panel))}
+  .box{flex:none;width:24px;height:24px;border-radius:8px;border:2px solid var(--ink-faint);display:grid;place-items:center;transition:.15s;margin-top:1px;}
+  .task.on .box{background:var(--acid);border-color:var(--acid)}
+  .box svg{width:14px;height:14px;stroke:var(--bg);stroke-width:3.5;fill:none;opacity:0;transition:.15s}
+  .task.on .box svg{opacity:1}
+  .task .tx{font-size:14.5px;line-height:1.45}
+  .task.on .tx{color:var(--ink-dim)}
+  .daydone{border:1px solid var(--acid);background:linear-gradient(180deg,rgba(198,244,50,.12),var(--panel));border-radius:16px;padding:18px;text-align:center;margin-top:6px}
+  .daydone b{font-family:'Unbounded',sans-serif;font-size:16px;color:var(--acid)}
+  .daydone p{font-size:13px;color:var(--ink-dim);margin-top:6px;line-height:1.5}
+  /* BUTTONS */
+  .btn{font-family:'Unbounded',sans-serif;font-weight:700;font-size:14px;border:none;border-radius:13px;padding:15px 20px;cursor:pointer;width:100%;background:var(--panel-2);color:var(--ink-faint);transition:.18s;}
+  .btn.go{background:var(--acid);color:var(--bg)}
+  .btn.go:active{transform:translateY(2px)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-dim)}
+  /* EXERCISES GRID */
+  .xgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .xcard{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:16px;cursor:pointer;transition:.15s;min-height:120px;display:flex;flex-direction:column;justify-content:space-between;}
+  .xcard:active{transform:scale(.97)}
+  .xcard .emoji{font-size:25px}
+  .xcard h4{font-family:'Unbounded',sans-serif;font-weight:700;font-size:14px;margin-top:9px}
+  .xcard p{font-size:11px;color:var(--ink-dim);margin-top:3px;line-height:1.35}
+  /* MODAL */
+  .modal{position:fixed;inset:0;z-index:200;background:rgba(6,8,6,.97);display:none;flex-direction:column;padding:18px;padding-top:calc(18px + env(safe-area-inset-top,0px))}
+  .modal.open{display:flex;animation:fade .25s}
+  .mtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .mtitle{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px}
+  .closex{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);width:38px;height:38px;border-radius:11px;font-size:18px;cursor:pointer}
+  .mbody{flex:1;display:flex;flex-direction:column;min-height:0}
+  .mhint{font-size:12.5px;color:var(--ink-dim);line-height:1.5;margin-bottom:12px}
+  .stage{flex:1;border:1px solid var(--line);border-radius:18px;background:var(--panel);position:relative;overflow:hidden;display:grid;place-items:center;min-height:0}
+  .bignum{font-family:'Space Mono',monospace;font-weight:700;font-size:60px;color:var(--acid);letter-spacing:-2px}
+  .readout{display:flex;gap:16px;justify-content:center;margin:12px 0;font-family:'Space Mono',monospace;font-size:12px;color:var(--ink-dim)}
+  .readout b{color:var(--ink);display:block;font-size:19px}
+  .readout div{text-align:center}
+  #breathCircle{width:150px;height:150px;border-radius:50%;background:radial-gradient(circle at 40% 35%,var(--acid),var(--acid-deep));display:grid;place-items:center;transition:transform 4s cubic-bezier(.45,0,.55,1);}
+  #breathCircle span{font-family:'Unbounded',sans-serif;font-weight:700;color:var(--bg);font-size:17px}
+  #dot{position:absolute;left:0;top:0;width:40px;height:40px;border-radius:50%;background:#6f7a70;will-change:transform,width,height;transition:width .08s,height .08s,background .08s}
+  #dot.sig{background:#ffffff;width:74px;height:74px;box-shadow:0 0 30px rgba(255,255,255,.6)}
+  .gnstim{width:120px;height:120px;background:var(--ink)}
+  .gnstim.circle{border-radius:50%}
+  .gnstim.square{border-radius:14px}
+  .gridboard{display:grid;gap:7px;width:min(80vw,290px)}
+  .gcell{aspect-ratio:1;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);transition:.1s}
+  .gcell.lit{background:var(--ink);border-color:var(--ink)}
+  .gcell.pick{background:#8a9a8c;border-color:#8a9a8c}
+  .gcell.good{background:var(--acid);border-color:var(--acid)}
+  .gcell.bad{background:var(--hazard);border-color:var(--hazard)}
+  /* CALCULATOR */
+  .calcwrap{display:flex;flex-direction:column;flex:1;min-height:0}
+  .calcdisp{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:18px 18px 14px;text-align:right;margin-bottom:12px}
+  .calcdisp .goal{font-family:'Space Mono',monospace;font-size:12px;color:var(--ink-faint)}
+  .calcdisp .val{font-family:'Space Mono',monospace;font-weight:700;font-size:52px;color:var(--acid);line-height:1;letter-spacing:-2px;margin-top:4px}
+  .calcmode{display:flex;gap:9px;margin-bottom:12px}
+  .calcmode button{flex:1;font-family:'Space Mono',monospace;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink-dim);border-radius:11px;padding:10px;cursor:pointer}
+  .calcmode button.on{border-color:var(--acid);color:var(--acid);background:var(--panel-2)}
+  .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+  .key{aspect-ratio:1.3;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:'Space Mono',monospace;font-size:21px;border-radius:13px;cursor:pointer;display:grid;place-items:center;transition:.1s}
+  .key:active{transform:scale(.93)}
+  .key.op{color:var(--acid)}
+  .key.dim{color:var(--ink-faint)}
+  .calcshake{animation:shake .3s}
+  @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  /* FOCUS */
+  .durrow{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:14px}
+  .durrow button{width:48px;height:48px;border-radius:13px;border:1px solid var(--line);background:var(--panel);color:var(--acid);font-size:24px;cursor:pointer}
+  .durrow .dv{font-family:'Space Mono',monospace;font-size:28px;font-weight:700;min-width:120px;text-align:center}
+  .durrow .dv small{font-size:13px;color:var(--ink-faint)}
+  /* STATS */
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .statcard{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:16px}
+  .statcard .n{font-family:'Unbounded',sans-serif;font-weight:900;font-size:30px;line-height:1}
+  .statcard .n.acid{color:var(--acid)}
+  .statcard .n.gold{color:var(--gold)}
+  .statcard .l{font-size:11px;color:var(--ink-dim);margin-top:6px}
+  .quote{margin-top:18px;border-left:3px solid var(--acid);padding:8px 0 8px 14px;font-size:13px;color:var(--ink-dim);line-height:1.6;font-style:italic}
+  /* NAV */
+  nav{position:fixed;bottom:0;left:0;right:0;z-index:60;max-width:520px;margin:0 auto;background:linear-gradient(180deg,rgba(10,12,10,.6),rgba(10,12,10,.98));backdrop-filter:blur(16px);border-top:1px solid var(--line);display:flex;padding:9px 8px calc(9px + var(--safe-b));}
+  .navbtn{flex:1;background:none;border:none;color:var(--ink-faint);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 0;transition:.15s}
+  .navbtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+  .navbtn span{font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.4px}
+  .navbtn.active{color:var(--acid)}
+  .toast{position:fixed;left:50%;bottom:calc(96px + var(--safe-b));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);font-weight:600;font-size:13px;padding:12px 18px;border-radius:12px;z-index:300;opacity:0;transition:.3s;pointer-events:none;max-width:90%;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .over{position:fixed;inset:0;z-index:400;background:rgba(6,8,6,.97);display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center}
+  .over.show{display:flex;animation:fade .35s}
+  .over .obig{font-family:'Unbounded',sans-serif;font-weight:900;font-size:30px;letter-spacing:-1px;line-height:1.1;animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
+  .over .obig.good{color:var(--acid)}
+  .over .obig.bad{color:var(--hazard)}
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+  .over .otext{font-size:15px;color:var(--ink-dim);margin:16px 0 28px;line-height:1.55;max-width:330px}
+  /* 2.1 additions */
+  .factcard{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:13px 15px;margin-bottom:14px;font-size:12.5px;color:var(--ink-dim);line-height:1.5}
+  .factcard b{color:var(--acid);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;display:block;margin-bottom:5px;text-transform:uppercase}
+  .questcard{border:1px solid rgba(255,206,74,.4);background:linear-gradient(180deg,rgba(255,206,74,.08),var(--panel));border-radius:14px;padding:14px;margin-top:14px;display:flex;gap:13px;align-items:flex-start;cursor:pointer;transition:.15s}
+  .questcard:active{transform:scale(.99)}
+  .questcard.on{border-color:rgba(255,206,74,.7)}
+  .questcard .qbox{flex:none;width:24px;height:24px;border-radius:8px;border:2px solid var(--gold);display:grid;place-items:center;margin-top:1px;transition:.15s}
+  .questcard.on .qbox{background:var(--gold)}
+  .questcard .qbox svg{width:14px;height:14px;stroke:var(--bg);stroke-width:3.5;fill:none;opacity:0}
+  .questcard.on .qbox svg{opacity:1}
+  .questcard .qlbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--gold);text-transform:uppercase}
+  .questcard .qtx{font-size:14px;line-height:1.4;margin-top:3px}
+  .questcard.on .qtx{color:var(--ink-dim)}
+  .xcard.locked{opacity:.55}
+  .xcard .lockbadge{font-family:'Space Mono',monospace;font-size:10px;color:var(--gold);border:1px solid var(--gold);border-radius:7px;padding:2px 7px;display:inline-block;margin-top:8px}
+  .moods{display:flex;gap:8px;justify-content:center;margin:6px 0 26px;flex-wrap:wrap}
+  .moodbtn{width:56px;height:62px;border:1px solid var(--line);background:var(--panel);border-radius:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:.15s}
+  .moodbtn:active{transform:scale(.92)}
+  .moodbtn .me{font-size:24px}
+  .moodbtn .mt{font-size:9px;color:var(--ink-faint);font-family:'Space Mono',monospace}
+  .moodgraph{display:flex;align-items:flex-end;gap:5px;height:80px;padding:10px 0;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .moodgraph .gb{flex:1;background:linear-gradient(180deg,var(--acid),var(--acid-deep));border-radius:4px 4px 0 0;min-height:4px;position:relative}
+  .moodgraph .gb .ge{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:11px}
+  .flowcell{aspect-ratio:1;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);font-family:'Space Mono',monospace;font-weight:700;font-size:24px;color:var(--ink);display:grid;place-items:center;cursor:pointer;transition:.1s}
+  .flowcell.done{background:var(--acid);color:var(--bg);border-color:var(--acid)}
+  .flowcell.wrong{background:var(--hazard);border-color:var(--hazard)}
+  .truthcard{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:'Unbounded',sans-serif;font-weight:700;font-size:22px;line-height:1.35;color:var(--ink)}
+  #tunnelDot{position:absolute;left:0;top:0;width:100px;height:100px;border-radius:50%;background:#6f7a70;will-change:transform}
+  #tunnelDot.hold{background:var(--acid)}
+  /* 2.2: flow-memory + maze */
+  .fboard{position:relative;width:min(82vw,320px);height:min(82vw,320px);margin:0 auto}
+  .fboard.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .fc{display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;font-family:'Space Mono',monospace;font-weight:700;font-size:24px;color:var(--ink);cursor:pointer;transition:.12s}
+  .fboard.grid .fc{position:relative;aspect-ratio:1}
+  .fboard.scatter .fc{position:absolute;width:58px;height:58px}
+  .fc.green{background:var(--acid);color:var(--bg);border-color:var(--acid)}
+  .fc.red{background:var(--hazard);color:#fff;border-color:var(--hazard)}
+  .membar{height:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-bottom:10px}
+  .membar>i{display:block;height:100%;background:var(--gold);width:100%}
+  #mzStage{position:relative;flex:1;border:1px solid var(--line);border-radius:18px;background:#000;overflow:hidden;display:grid;place-items:center;touch-action:none}
+  #mzCanvas{display:block;touch-action:none}
+  .joy{position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid var(--line);pointer-events:none;display:none;z-index:5}
+  .joy .knob{position:absolute;width:60px;height:60px;border-radius:50%;background:var(--acid);left:45px;top:45px;box-shadow:0 0 18px rgba(198,244,50,.45)}
+  /* BODY module */
+  .bcard{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:16px;margin-bottom:12px}
+  .bcard h3{font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px}
+  .brow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .pill{font-family:'Space Mono',monospace;font-size:11px;color:var(--acid);border:1px solid var(--acid);border-radius:99px;padding:3px 10px;white-space:nowrap}
+  .calnav{background:var(--panel-2);border:1px solid var(--line);color:var(--acid);width:32px;height:32px;border-radius:9px;font-size:18px;cursor:pointer}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
+  .cal .wd{font-size:9px;color:var(--ink-faint);text-align:center;font-family:'Space Mono',monospace}
+  .cal .cd{aspect-ratio:1;border-radius:9px;display:grid;place-items:center;font-family:'Space Mono',monospace;font-size:12px;color:var(--ink-dim);background:var(--panel-2);border:1px solid transparent}
+  .cal .cd.tr{border-color:rgba(198,244,50,.45);color:var(--ink);background:rgba(198,244,50,.07)}
+  .cal .cd.done{background:var(--acid);color:var(--bg);font-weight:700;cursor:pointer}
+  .cal .cd.tr:not(.done){cursor:pointer}
+  .cal .cd.tr:not(.done):active{transform:scale(.88)}
+  .cal .cd.today{box-shadow:0 0 0 2px var(--gold)}
+  .cal .cd.empty{background:transparent}
+  .exstep{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:20px;text-align:center}
+  .exstep .en{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px}
+  .exstep .ebig{font-family:'Space Mono',monospace;font-size:38px;color:var(--acid);font-weight:700;margin:6px 0}
+  .exstep .ed{color:var(--ink-dim);font-size:13px;line-height:1.5}
+  .restbig{font-family:'Space Mono',monospace;font-size:64px;color:var(--gold);font-weight:700;text-align:center}
+  .diffrow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0}
+  .diffbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);cursor:pointer;font-family:'Space Mono',monospace}
+  .diffbtn.on{background:var(--acid);color:var(--bg);border-color:var(--acid)}
+  .binput{width:66px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);font-family:'Space Mono',monospace;border-radius:8px;padding:7px;text-align:center}
+  .photostrip{display:flex;gap:9px;overflow-x:auto;padding-bottom:4px}
+  .photostrip .pi{flex:none;width:92px;text-align:center}
+  .photostrip img{width:92px;height:122px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--panel-2)}
+  .photostrip .pd{font-size:10px;color:var(--ink-faint);margin-top:3px;font-family:'Space Mono',monospace}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo"><span>deto</span><span class="x">X</span></div>
+    <div class="tagline">30 дней · верни внимание</div>
+  </header>
+
+  <section class="view active" id="v-program">
+    <div class="lvlcard">
+      <div class="lvltop">
+        <div class="lvln" id="lvlN">1<small> ур.</small></div>
+        <div class="lvlrank" id="lvlRank">—</div>
+      </div>
+      <div class="lvlbar"><i id="lvlBar" style="width:0%"></i></div>
+      <div class="lvlmeta"><span id="lvlDay">День 1 / 30</span><span id="lvlPhase">Фаза 1</span></div>
+    </div>
+    <div id="todayBox"></div>
+  </section>
+
+  <section class="view" id="v-train">
+    <h2 class="section">Тренировки внимания</h2>
+    <p class="sub">Спортзал для концентрации и силы воли. Любая засчитывается в дневной чек-лист.</p>
+    <div class="xgrid" id="xgrid"></div>
+  </section>
+
+  <section class="view" id="v-body"><h2 class="section">Тело</h2><p class="sub">Та же механика уровней и серий, что держит тебя в детоксе — но для тела. Цель: 15 подтягиваний к концу лета.</p><div id="bodyContent"></div></section>
+
+  <section class="view" id="v-progress">
+    <h2 class="section">Прогресс</h2>
+    <p class="sub">То, что видно, держит лучше силы воли.</p>
+    <div class="statgrid">
+      <div class="statcard"><div class="n acid" id="stLvl">1</div><div class="l">УРОВЕНЬ</div></div>
+      <div class="statcard"><div class="n gold" id="stDay">1</div><div class="l">ДЕНЬ ДЕТОКСА / 30</div></div>
+      <div class="statcard"><div class="n acid" id="stPass">0</div><div class="l">ДНЕЙ ЗАКРЫТО</div></div>
+      <div class="statcard"><div class="n" id="stFail">0</div><div class="l">ДНЕЙ ПРОВАЛЕНО</div></div>
+    </div>
+    <div class="quote" id="progQuote"></div>
+    <div class="grouplbl">Данные и обновления</div>
+    <div style="display:flex;gap:9px">
+      <button class="btn ghost" id="exportBtn" style="flex:1">💾 Сохранить копию</button>
+      <button class="btn ghost" id="importBtn" style="flex:1">↩️ Восстановить</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+    <button class="btn ghost" id="resetBtn" style="margin-top:9px">Сбросить весь прогресс</button>
+    <div class="grouplbl">Настроение по дням</div><div class="moodgraph" id="moodGraph"></div>
+    <div class="grouplbl">История дней</div><div id="histWrap" style="margin-bottom:4px"></div>
+    <div style="text-align:center;color:var(--ink-faint);font-family:'Space Mono',monospace;font-size:11px;margin-top:16px;line-height:1.6">detoX v<span id="appVer"></span> · данные хранятся на устройстве<br>обновление приложения их не стирает</div>
+  </section>
+</div>
+
+<div class="modal" id="modal">
+  <div class="mtop"><div class="mtitle" id="mTitle"></div><button class="closex" id="mClose">✕</button></div>
+  <div class="mbody" id="mBody"></div>
+</div>
+
+<div class="over" id="over">
+  <div class="obig" id="overBig"></div>
+  <div class="otext" id="overText"></div>
+  <div class="moods" id="overMoods" style="display:none"></div>
+  <button class="btn go" id="overBtn" style="max-width:280px">ДАЛЬШЕ</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<nav>
+  <button class="navbtn active" data-v="program"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>ДЕНЬ</span></button>
+  <button class="navbtn" data-v="train"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>ТРЕНИРОВКИ</span></button>
+  <button class="navbtn" data-v="body"><svg viewBox="0 0 24 24"><path d="M6 4v6a6 6 0 0012 0V4M6 20v-2a6 6 0 0112 0v2"/></svg><span>ТЕЛО</span></button>
+  <button class="navbtn" data-v="progress"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>ПРОГРЕСС</span></button>
+</nav>
+
+<script>
+const APP_VERSION='2.5';
+const PROGRAM_DAYS=30;
+
+/* ---------- checklists by phase ---------- */
+const CORE = {
+  shorts:{id:'shorts', t:'Ни одного шортса за день'},
+  morn:{id:'morn', t:'Первый час после пробуждения — без экрана'},
+  curfew:{id:'curfew', t:'За час до сна — конец экранам'},
+};
+function checklistFor(day){
+  if(day<=7) return [CORE.shorts, CORE.morn,
+    {id:'batch', t:'Почту и сообщения проверял пакетами, не дёргался'},
+    CORE.curfew,
+    {id:'train', t:'Сделал 1 тренировку внимания в detoX'}];
+  if(day<=18) return [CORE.shorts, CORE.morn, CORE.curfew,
+    {id:'focus', t:'Блок фокуса (25–60 мин) в detoX'},
+    {id:'book', t:'15 мин бумажной книги ИЛИ прогулка без телефона'},
+    {id:'train', t:'1 тренировка внимания в detoX'},
+    {id:'mindful', t:'Сериал/игры — по таймеру, не запоем'}];
+  return [CORE.shorts, CORE.morn, CORE.curfew,
+    {id:'focus', t:'Блок фокуса (25–60 мин) в detoX'},
+    {id:'flow', t:'Одно дело потока: руки, спорт, музыка, творчество'},
+    {id:'human', t:'Живой контакт с человеком ИЛИ время на природе без телефона'},
+    {id:'food', t:'Простая еда вместо быстрых сахарных пиков'}];
+}
+function phaseName(day){ if(day<=7) return 'Фаза 1 · Ломка'; if(day<=18) return 'Фаза 2 · Внимание'; return 'Фаза 3 · Новая норма'; }
+
+const RANKS=[
+  {min:0,t:'Овощ, приросший к экрану'},
+  {min:1,t:'Подаёшь признаки жизни'},
+  {min:3,t:'Отлип, но потряхивает'},
+  {min:5,t:'Человек прямоходящий'},
+  {min:8,t:'Хозяин своего внимания'},
+  {min:12,t:'Сила воли во плоти'},
+  {min:18,t:'Дзен-монах с вайфаем'},
+  {min:25,t:'Властелин дофамина'},
+];
+function rankFor(l){ let r=RANKS[0]; for(const x of RANKS) if(l>=x.min) r=x; return r.t; }
+function checkUnlocks(){ if(!S.seenUnlocks)S.seenUnlocks=[]; const newly=[];
+  (typeof EXERCISES!=='undefined'?EXERCISES:[]).forEach(x=>{ if((x.lock||0)>0 && S.level>=x.lock && !S.seenUnlocks.includes(x.id)){ S.seenUnlocks.push(x.id); newly.push(x.name); } }); return newly; }
+function addLevel(){ S.level=S.level+1; return checkUnlocks(); }
+
+const PRAISE=[
+  'День закрыт под ноль. Вот это по-мужски. Так и куётся характер.',
+  'Чисто. Дофаминовая помойка сегодня осталась голодной. Красавчик.',
+  'Ещё день — и шортсы будут плакать у твоей двери. Уровень вверх.',
+  'Вот теперь верю, что ты и Death Stranding пройдёшь, и жизнь свою заодно.',
+  'Сегодня ты был сильнее алгоритма. Запомни это чувство — оно дороже любого свайпа.',
+  'Идеально. Девушки любят мужиков, которые держат слово себе. Ты сегодня держал.',
+];
+const ROAST=[
+  'Просрал день. Так ты не то что Death Stranding — меню настроек не пройдёшь. Завтра соберись, боец.',
+  'Ноль галочек. И ты, значит, хочешь девушку? Она там у кого-то в сторис, пока ты тут сливаешься. Догоняй.',
+  'Ещё пара таких дней — и встречаемся в канаве, бро. Вставай и закрывай чек-лист.',
+  'Мозг сказал "потом". "Потом" не пришло. Классика слабака. Докажи завтра, что ты не он.',
+  'День мимо. Алгоритм улыбается, ты проиграл. Но проигрыш — это не конец, если завтра встанешь.',
+];
+const QUESTS=[
+  'Залипни в окно 2 минуты, как кот на улицу',
+  'Съешь что-нибудь медленно и реально почувствуй вкус',
+  'Потянись так, будто только проснулся медведь весной',
+  'Напиши себе одно доброе слово. Серьёзно, одно',
+  'Сделай 5 глубоких вдохов с закрытыми глазами прямо где стоишь',
+  'Послушай один трек целиком, ничего при этом не делая',
+  'Посмотри на небо 60 секунд. Просто небо',
+  'Погладь кота, собаку или хотя бы подушку',
+  'Выпей стакан воды так, будто это лучший напиток в мире',
+  'Вспомни один хороший момент из этой недели',
+  'Пройдись по комнате босиком и почувствуй пол',
+  'Улыбнись своему отражению. Глупо? Вот и улыбнись',
+  'Открой окно и подыши уличным воздухом минуту',
+  'Сделай одно мелкое дело левой рукой (если ты правша)',
+];
+const FACTS=[
+  'Тяга длится 1–2 минуты и спадает сама, если её не кормить. Переждать — уже победа.',
+  'Шортсы выжигают внимание не контентом, а форматом: бесконечность плюс случайная награда.',
+  'Сила воли — это аварийный резерв, а не топливо на день. Настоящий рычаг — среда.',
+  'Вялость и скука после отказа от стимуляции — это норма. Дофаминовый откат, 3–7 дней.',
+  'Скука не враг. Это состояние, в котором мозг восстанавливает способность концентрироваться.',
+  'Привычка закрепляется повторением, а не силой. Поэтому чек-лист один и тот же — это фича.',
+  'Быстрая еда бьёт по той же системе, что и лента. Они усиливают друг друга.',
+  'Первый час утра без экрана задаёт режим внимания на весь день. Самый сильный рычаг.',
+  'Мозг не различает «полезный» и «мусорный» дофамин по пику. Различает по последствиям.',
+  'Каждый раз, когда не достал телефон по привычке, рефлекс становится чуть слабее.',
+  'Сон в детоксе — не потеря времени, а восстановление баланса нейромедиаторов.',
+  'Живой разговор даёт глубину эмоции, которую лента не даёт в принципе.',
+  'Многозадачности нет. Мозг быстро переключается между делами и от этого устаёт.',
+  'Чем скучнее без телефона сейчас, тем сильнее он тебя держал. Это мера зависимости.',
+  'Ты не отстаёшь от других. Ты выходишь из гонки, где выигрывает только алгоритм.',
+];
+const MOODS=[{e:'😩',t:'плохо',v:1},{e:'😐',t:'так себе',v:2},{e:'🙂',t:'норм',v:3},{e:'😎',t:'хорошо',v:4},{e:'🔥',t:'супер',v:5}];
+
+/* ---------- state ---------- */
+const LS_KEY='detox-state';
+let MEM=null;
+const DEFAULT_STATE=()=>({v:APP_VERSION,start:Date.now(),level:1,completedDays:0,dayHistory:[],dayChecks:{},best:{},focusEnd:0,focusDur:25,seenUnlocks:[],body:{start:0,max:5,weight:84,rotation:0,log:{},photos:[],lastPhoto:''}});
+let S=DEFAULT_STATE();
+function migrate(s){const d=DEFAULT_STATE();return Object.assign({},d,s,{v:APP_VERSION,completedDays:s.completedDays||0,dayHistory:s.dayHistory||[],dayChecks:Object.assign({},s.dayChecks||{}),best:Object.assign({},s.best||{}),seenUnlocks:s.seenUnlocks||[],body:Object.assign({start:0,max:5,weight:84,rotation:0,log:{},photos:[],lastPhoto:''},s.body||{})});}
+async function load(){let raw=null;try{raw=localStorage.getItem(LS_KEY);}catch(e){}
+  if(!raw){try{if(window.storage){const r=await window.storage.get(LS_KEY);if(r&&r.value)raw=r.value;}}catch(e){}}
+  if(raw){try{S=migrate(JSON.parse(raw));return;}catch(e){}} if(MEM)S=MEM;}
+async function save(){MEM=S;const str=JSON.stringify(S);try{localStorage.setItem(LS_KEY,str);}catch(e){}try{if(window.storage)await window.storage.set(LS_KEY,str);}catch(e){}}
+
+function localDate(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function currentDayIdx(){return S.completedDays;}
+function programDay(){return S.completedDays+1;}
+function passedDays(){return S.completedDays;}
+function failedDays(){return (S.dayHistory||[]).filter(h=>h.result==='fail').length;}
+function fmtDate(d){d=d||new Date();const days=['вс','пн','вт','ср','чт','пт','сб'];return days[d.getDay()]+' '+d.getDate()+'.'+String(d.getMonth()+1).padStart(2,'0');}
+function reconcile(){return 0;}
+
+/* ---------- program render ---------- */
+function renderLevel(){
+  const day=Math.min(programDay(),PROGRAM_DAYS);
+  document.getElementById('lvlN').innerHTML=S.level+'<small> ур.</small>';
+  document.getElementById('lvlRank').textContent=rankFor(S.level);
+  document.getElementById('lvlDay').textContent='День '+day+' / '+PROGRAM_DAYS;
+  document.getElementById('lvlPhase').textContent=phaseName(day);
+  document.getElementById('lvlBar').style.width=Math.round(day/PROGRAM_DAYS*100)+'%';
+}
+function renderToday(){
+  renderLevel();
+  const day=programDay();
+  const checkKey='day_'+currentDayIdx();
+  const items=checklistFor(Math.min(day,PROGRAM_DAYS));
+  if(!S.dayChecks[checkKey])S.dayChecks[checkKey]={};
+  const checks=S.dayChecks[checkKey];
+  const box=document.getElementById('todayBox');
+  const dateStr=fmtDate();
+  let html='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+
+    '<div class="phasechip" style="margin-bottom:0">'+phaseName(Math.min(day,PROGRAM_DAYS))+'</div>'+
+    '<div style="font-family:Space Mono,monospace;font-size:11px;color:var(--ink-faint)">'+dateStr+'</div></div>';
+  if(day>PROGRAM_DAYS){
+    html+='<div class="daydone"><b>🏁 30 дней пройдено</b><p>Детокс окончен — теперь это просто твоя жизнь.</p></div>';
+    box.innerHTML=html; return;
+  }
+  // fact of the day
+  html+='<div class="factcard"><b>мысль дня</b>'+FACTS[currentDayIdx()%FACTS.length]+'</div>';
+  items.forEach(it=>{
+    const on=!!checks[it.id];
+    html+='<div class="task '+(on?'on':'')+'" data-id="'+it.id+'"><div class="box"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></div><div class="tx">'+it.t+'</div></div>';
+  });
+  html+='<div style="text-align:center;color:var(--ink-faint);font-size:12px;margin-top:12px;font-family:Space Mono,monospace">отметь всё — следующий день откроется сразу</div>';
+  // quest of the day (bonus)
+  const quest=QUESTS[currentDayIdx()%QUESTS.length];
+  const qon=!!checks.quest;
+  html+='<div class="questcard '+(qon?'on':'')+'" id="questCard"><div class="qbox"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></div><div><div class="qlbl">🎁 квест дня · +1 уровень бонусом</div><div class="qtx">'+quest+'</div></div></div>';
+  box.innerHTML=html;
+  box.querySelectorAll('.task').forEach(node=>{
+    node.onclick=()=>{
+      const id=node.dataset.id;
+      S.dayChecks[checkKey][id]=!S.dayChecks[checkKey][id];
+      save();
+      if(tryCompleteDay())return;
+      renderToday(); renderProgress();
+    };
+  });
+  const qc=document.getElementById('questCard');
+  if(qc) qc.onclick=()=>{
+    if(checks.quest) return; // already done, no take-backs
+    S.dayChecks[checkKey].quest=true;
+    const newly=addLevel();
+    save(); renderToday(); renderProgress();
+    if(newly.length) showOver('good','РАЗБЛОКИРОВАНО',newly.join(', ')+' — загляни в Тренировки.');
+    else toast('🎁 Квест выполнен. +1 уровень');
+  };
+}
+
+/* ---------- overlay ---------- */
+function showOver(kind,big,text){
+  const o=document.getElementById('over');
+  document.getElementById('overBig').className='obig '+kind;
+  document.getElementById('overBig').textContent=big;
+  document.getElementById('overText').textContent=text;
+  o.classList.add('show');
+}
+document.getElementById('overBtn').onclick=()=>document.getElementById('over').classList.remove('show');
+let _pendingUnlocks=[];
+function showCompletion(praise,newly){
+  _pendingUnlocks=newly||[];
+  const o=document.getElementById('over');
+  document.getElementById('overBig').className='obig good';
+  document.getElementById('overBig').textContent='+1 УРОВЕНЬ';
+  document.getElementById('overText').textContent=praise+'  ·  Как прошёл день?';
+  const mw=document.getElementById('overMoods');mw.style.display='flex';mw.innerHTML='';
+  document.getElementById('overBtn').style.display='none';
+  MOODS.forEach(m=>{const b=document.createElement('div');b.className='moodbtn';b.innerHTML='<div class="me">'+m.e+'</div><div class="mt">'+m.t+'</div>';
+    b.onclick=()=>{const h=S.dayHistory;if(h.length)h[h.length-1].mood=m.v;save();renderProgress();afterMood();};mw.appendChild(b);});
+  o.classList.add('show');
+}
+function afterMood(){
+  const o=document.getElementById('over');
+  document.getElementById('overMoods').style.display='none';
+  document.getElementById('overBtn').style.display='';
+  if(_pendingUnlocks.length){
+    document.getElementById('overBig').textContent='РАЗБЛОКИРОВАНО';
+    document.getElementById('overText').textContent=_pendingUnlocks.join(', ')+' — загляни в Тренировки.';
+    _pendingUnlocks=[];
+  } else { o.classList.remove('show'); }
+}
+
+/* ---------- exercises ---------- */
+const EXERCISES=[
+  {id:'breath',emoji:'🫁',name:'Дыхание-якорь',lock:0,desc:'Дыши, пока приложение не скажет хватит. Сколько — не узнаешь.'},
+  {id:'dot',emoji:'⚪',name:'Точка',lock:0,desc:'Лови вспышку. Точка растёт и белеет — жми ровно тогда.'},
+  {id:'gng',emoji:'🛑',name:'Тормоз',lock:0,desc:'Жми на круг, НЕ жми на квадрат. Тренирует тот самый импульс.'},
+  {id:'calc',emoji:'🔢',name:'Калькулятор',lock:0,desc:'Аккуратно набери 1+1+1… Ошибся — с нуля. Дрил на дисциплину.'},
+  {id:'focus',emoji:'⏳',name:'Фокус-блок',lock:0,desc:'25–60 мин. Идёт по реальному времени — телефон можно блокировать.'},
+  {id:'grid',emoji:'🧩',name:'Сетка-память',lock:0,desc:'Запомни узор, поле растёт каждые раунды. Память и точность.'},
+  {id:'flow',emoji:'🔀',name:'Поток',lock:3,desc:'Запомни числа, переверни, прожми по порядку. Память позиций.'},
+  {id:'truth',emoji:'🃏',name:'Карточки правды',lock:5,desc:'Резкие честные мысли. Листай, когда накрывает тяга.'},
+  {id:'tunnel',emoji:'🕳️',name:'Тоннель',lock:8,desc:'Удерживай палец на ползущей точке. Сорвался — заново.'},
+  {id:'beast',emoji:'👹',name:'Режим Зверь',lock:12,desc:'Жёсткий скоростной дрил. Только для прокачанных.'},
+  {id:'maze',emoji:'🌀',name:'Лабиринт',lock:0,desc:'Скользящий квадрат, случайные лабиринты, много уровней.'},
+];
+function renderTrain(){
+  const g=document.getElementById('xgrid');g.innerHTML='';
+  EXERCISES.forEach(x=>{
+    const locked=(x.lock||0)>S.level;
+    const d=document.createElement('div');d.className='xcard'+(locked?' locked':'');
+    if(locked){
+      d.innerHTML='<div class="emoji">🔒</div><div><h4>'+x.name+'</h4><span class="lockbadge">уровень '+x.lock+'</span></div>';
+      d.onclick=()=>toast('🔒 Откроется на уровне '+x.lock);
+    } else {
+      d.innerHTML='<div class="emoji">'+x.emoji+'</div><div><h4>'+x.name+'</h4><p>'+x.desc+'</p></div>';
+      d.onclick=()=>openExercise(x.id);
+    }
+    g.appendChild(d);
+  });
+}
+const modal=document.getElementById('modal'),mBody=document.getElementById('mBody');
+let activeCleanup=null;
+function closeModal(){if(activeCleanup){activeCleanup();activeCleanup=null;}modal.classList.remove('open');mBody.innerHTML='';}
+document.getElementById('mClose').onclick=closeModal;
+function tryCompleteDay(){
+  const checkKey='day_'+currentDayIdx();const day=programDay();
+  if(day>PROGRAM_DAYS)return false;
+  const items=checklistFor(Math.min(day,PROGRAM_DAYS));
+  const c=S.dayChecks[checkKey]||{};
+  if(!items.every(it=>c[it.id]))return false;
+  if(!S.dayHistory)S.dayHistory=[];
+  S.dayHistory.push({day:currentDayIdx()+1,result:'pass',date:localDate(),mood:null});
+  S.completedDays=S.completedDays+1;
+  const newly=addLevel();
+  save(); renderToday(); renderProgress();
+  showCompletion(PRAISE[Math.floor(Math.random()*PRAISE.length)],newly);
+  return true;
+}
+function markTrained(){
+  const checkKey='day_'+currentDayIdx();const day=programDay();const items=checklistFor(Math.min(day,PROGRAM_DAYS));
+  if(items.some(it=>it.id==='train')){if(!S.dayChecks[checkKey])S.dayChecks[checkKey]={};if(!S.dayChecks[checkKey].train){S.dayChecks[checkKey].train=true;save();if(!tryCompleteDay()){renderToday();toast('✓ Тренировка засчитана в день');}}}
+}
+function openExercise(id){
+  const x=EXERCISES.find(e=>e.id===id);if((x.lock||0)>S.level){toast('🔒 Откроется на уровне '+x.lock);return;}
+  document.getElementById('mTitle').textContent=x.name;modal.classList.add('open');
+  if(id==='breath')exBreath();if(id==='dot')exDot();if(id==='gng')exGNG();if(id==='calc')exCalc();if(id==='focus')exFocus();if(id==='grid')exGrid();
+  if(id==='flow')exFlow();if(id==='truth')exTruth();if(id==='tunnel')exTunnel();if(id==='beast')exBeast();if(id==='maze')exMaze();
+}
+
+let actx;
+function beep(){try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();
+  [0,0.5,1].forEach(t=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;o.connect(g);g.connect(actx.destination);
+    g.gain.setValueAtTime(0.0001,actx.currentTime+t);g.gain.exponentialRampToValueAtTime(0.28,actx.currentTime+t+0.05);g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+t+0.4);
+    o.start(actx.currentTime+t);o.stop(actx.currentTime+t+0.45);});}catch(e){}}
+
+/* BREATH — hidden random cycle count */
+function exBreath(){
+  mBody.innerHTML='<p class="mhint">Следуй за кругом: вдох — растёт, выдох — сжимается, по 4 секунды. Дыши, пока detoX не скажет «хватит». Сколько кругов — ты не знаешь. Просто дыши.</p>'+
+    '<div class="stage"><div id="breathCircle"><span id="bPhase">Начали</span></div></div>';
+  const circle=document.getElementById('breathCircle'),phase=document.getElementById('bPhase');
+  const phases=[['Вдох',1.35],['Держи',1.35],['Выдох',0.72],['Держи',0.72]];
+  const target=6+Math.floor(Math.random()*15); // 6..20, hidden
+  let p=0,count=0,done=false;
+  function step(){
+    if(done)return;
+    const[l,sc]=phases[p];phase.textContent=l;circle.style.transform='scale('+sc+')';
+    if(p===0){count++;if(count>target){finish();return;}}
+    p=(p+1)%4;
+  }
+  function finish(){done=true;clearInterval(iv);circle.style.transform='scale(1)';phase.textContent='Хватит';beep();
+    setTimeout(()=>{phase.style.fontSize='13px';phase.textContent='Молодец';},300);
+    markTrained();
+    setTimeout(()=>showOver('good','ХОРОШО, ХВАТИТ','Ты не считал — ты просто дышал. Вот так и выглядит внимание без таймера в голове.'),600);
+  }
+  step();const iv=setInterval(step,4000);activeCleanup=()=>{done=true;clearInterval(iv);};
+}
+
+/* DOT — fixed bounds + grayscale-friendly (grows & whitens) */
+function exDot(){
+  mBody.innerHTML='<p class="mhint">Точка плавает по полю. Иногда она РАСТЁТ и становится белой на миг — жми по полю ровно в этот момент. Зря не жми. 60 секунд.</p>'+
+    '<div class="readout"><div><b id="dHit">0</b>поймал</div><div><b id="dMiss">0</b>прозевал</div><div><b id="dFalse">0</b>ложно</div><div><b id="dTime">60</b>сек</div></div>'+
+    '<div class="stage" id="dStage"><div id="dot"></div></div>';
+  const stage=document.getElementById('dStage'),dot=document.getElementById('dot');
+  let hits=0,miss=0,fa=0,time=60,active=false,ended=false,x=60,y=60,tx=60,ty=60,raf;
+  function bounds(){const r=stage.getBoundingClientRect();return{w:Math.max(40,r.width-80),h:Math.max(40,r.height-80)};}
+  function newTarget(){const b=bounds();tx=Math.random()*b.w;ty=Math.random()*b.h;}
+  setTimeout(newTarget,30);
+  function move(){if(ended)return;x+=(tx-x)*0.045;y+=(ty-y)*0.045;if(Math.abs(tx-x)<2&&Math.abs(ty-y)<2)newTarget();dot.style.transform='translate('+x+'px,'+y+'px)';raf=requestAnimationFrame(move);}move();
+  let evt,off;
+  function sched(){evt=setTimeout(()=>{if(ended)return;active=true;dot.classList.add('sig');
+    off=setTimeout(()=>{if(active){miss++;document.getElementById('dMiss').textContent=miss;}active=false;dot.classList.remove('sig');sched();},800);
+  },1500+Math.random()*3500);}sched();
+  function tap(){if(ended)return;if(active){hits++;document.getElementById('dHit').textContent=hits;active=false;dot.classList.remove('sig');clearTimeout(off);sched();}else{fa++;document.getElementById('dFalse').textContent=fa;}}
+  stage.addEventListener('pointerdown',tap);
+  const timer=setInterval(()=>{time--;document.getElementById('dTime').textContent=time;if(time<=0)end();},1000);
+  function end(){ended=true;clearInterval(timer);cancelAnimationFrame(raf);clearTimeout(evt);clearTimeout(off);
+    const sc=Math.max(0,hits*10-fa*4);if((S.best.dot||0)<sc){S.best.dot=sc;}markTrained();save();
+    stage.innerHTML='<div style="text-align:center"><div class="bignum">'+sc+'</div><div style="color:var(--ink-dim);font-size:13px;margin-top:6px">очков · рекорд '+(S.best.dot||0)+'</div></div>';}
+  activeCleanup=()=>{ended=true;clearInterval(timer);cancelAnimationFrame(raf);clearTimeout(evt);clearTimeout(off);};
+}
+
+/* GO / NO-GO — impulse inhibition, grayscale-safe via shape */
+function exGNG(){
+  mBody.innerHTML='<p class="mhint">Появляется фигура. КРУГ — быстро жми по полю. КВАДРАТ — НЕ жми, терпи. Это тренирует ровно тот импульс, что тянет тебя к телефону. 60 секунд.</p>'+
+    '<div class="readout"><div><b id="gHit">0</b>верно</div><div><b id="gStop">0</b>сдержался</div><div><b id="gErr">0</b>ошибок</div><div><b id="gTime">60</b>сек</div></div>'+
+    '<div class="stage" id="gStage"></div>';
+  const stage=document.getElementById('gStage');
+  let hit=0,stop=0,err=0,time=60,ended=false,cur=null,awaiting=false,t1,t2;
+  function show(){if(ended)return;const isGo=Math.random()<0.68;cur=isGo?'go':'no';awaiting=true;
+    const el=document.createElement('div');el.className='gnstim '+(isGo?'circle':'square');el.id='stim';stage.innerHTML='';stage.appendChild(el);
+    t1=setTimeout(()=>{ // window closes
+      if(awaiting){if(cur==='go'){err++;document.getElementById('gErr').textContent=err;}else{stop++;document.getElementById('gStop').textContent=stop;}}
+      awaiting=false;stage.innerHTML='';t2=setTimeout(show,300+Math.random()*300);
+    },900);
+  }
+  function tap(){if(ended||!awaiting)return;if(cur==='go'){hit++;document.getElementById('gHit').textContent=hit;}else{err++;document.getElementById('gErr').textContent=err;}awaiting=false;clearTimeout(t1);stage.innerHTML='';t2=setTimeout(show,300+Math.random()*300);}
+  stage.addEventListener('pointerdown',tap);
+  setTimeout(show,500);
+  const timer=setInterval(()=>{time--;document.getElementById('gTime').textContent=time;if(time<=0)end();},1000);
+  function end(){ended=true;clearInterval(timer);clearTimeout(t1);clearTimeout(t2);
+    const sc=Math.max(0,hit*5+stop*5-err*6);if((S.best.gng||0)<sc){S.best.gng=sc;}markTrained();save();
+    stage.innerHTML='<div style="text-align:center"><div class="bignum">'+sc+'</div><div style="color:var(--ink-dim);font-size:13px;margin-top:6px">очков самоконтроля · рекорд '+(S.best.gng||0)+'</div></div>';}
+  activeCleanup=()=>{ended=true;clearInterval(timer);clearTimeout(t1);clearTimeout(t2);};
+}
+
+/* CALCULATOR — strict 1 + 1 + ... */
+const CALC_REWARDS=[
+  'Готово. Пока ты считал, чей-то мозг досматривал 80-й шортс подряд. Эволюция выбрала тебя.',
+  'Терпение — это мышца. Ты только что сделал ей жим без читмила. 💪',
+  'Сто единиц без единой ошибки. Где-то в Тибете монах одобрительно кивнул.',
+  'Анекдот: «Доктор, не могу сосредоточиться». — «А 1+1 сто раз пробовали?» — «Что?» — «Вот видите, уже отвлеклись. А ты — нет».',
+  'Скучно было? Вот именно. Скука — это спортзал для мозга, и ты только что отжался от пола.',
+  'Ты сейчас сделал самую бесполезную и при этом самую полезную вещь за день. Парадокс силы воли.',
+  'Если можешь аккуратно нажать 1+1 сто раз — сможешь и не открыть ленту. Это та же мышца.',
+  'Чисто. Ни одного лишнего тапа. Так и держи руки от телефона остаток дня.',
+];
+function exCalc(){
+  let goal=100,sum=0,expect='digit',won=false;
+  mBody.innerHTML='<div class="calcwrap">'+
+    '<div class="calcmode"><button id="m100" class="on">Цель 100</button><button id="m10000">Хардкор 10000</button></div>'+
+    '<div class="calcdisp"><div class="goal">цель: <span id="cGoal">100</span></div><div class="val" id="cVal">0</div></div>'+
+    '<div class="keys" id="keys"></div></div>';
+  const keysWrap=document.getElementById('keys'),disp=document.getElementById('cVal'),dispBox=document.querySelector('.calcdisp');
+  const layout=[['C','dim'],['±','dim'],['%','dim'],['÷','op'],['7',''],['8',''],['9',''],['×','op'],['4',''],['5',''],['6',''],['−','op'],['1',''],['2',''],['3',''],['+','op'],['0',''],['.','dim'],['⌫','dim'],['=','op']];
+  layout.forEach(([k,cls])=>{const b=document.createElement('div');b.className='key '+cls;b.textContent=k;b.onclick=()=>press(k);keysWrap.appendChild(b);});
+  function setGoal(g){goal=g;document.getElementById('cGoal').textContent=g;reset(true);
+    document.getElementById('m100').classList.toggle('on',g===100);document.getElementById('m10000').classList.toggle('on',g===10000);}
+  document.getElementById('m100').onclick=()=>setGoal(100);
+  document.getElementById('m10000').onclick=()=>setGoal(10000);
+  function reset(silent){sum=0;expect='digit';won=false;disp.textContent='0';if(!silent){dispBox.classList.add('calcshake');setTimeout(()=>dispBox.classList.remove('calcshake'),300);}}
+  function press(k){
+    if(won){reset(true);}
+    if(k==='1'){ if(expect==='digit'){sum++;expect='op';disp.textContent=sum;if(sum>=goal)win();} else {toast('Два раза подряд — нельзя. С нуля.');reset();} }
+    else if(k==='+'){ if(expect==='op'){expect='digit';} else {toast('Сначала 1, потом +. С нуля, боец.');reset();} }
+    else { toast('Только 1 и +. Всё остальное — сброс.');reset(); }
+  }
+  function win(){won=true;beep();markTrained();save();
+    showOver('good','+'+goal,CALC_REWARDS[Math.floor(Math.random()*CALC_REWARDS.length)]);}
+  activeCleanup=()=>{};
+}
+
+/* FOCUS — timestamp based, survives lock, 25..60 */
+function exFocus(){
+  let dur=S.focusDur||25;
+  function tpl(){return '<p class="mhint">Поставь время и жми старт. Таймер идёт по реальным часам — можешь заблокировать телефон и убрать его. Вернёшься — увидишь, сколько осталось.</p>'+
+    '<div class="durrow"><button id="dMinus">−</button><div class="dv"><span id="dVal">'+dur+'</span> <small>мин</small></div><button id="dPlus">+</button></div>'+
+    '<div class="stage"><div style="text-align:center"><div class="bignum" id="fT">'+pad(dur)+':00</div><div id="fSt" style="color:var(--ink-dim);font-size:13px;margin-top:6px">готов к старту</div></div></div>'+
+    '<div style="display:flex;gap:9px;margin-top:14px"><button class="btn go" id="fStart" style="flex:2">СТАРТ</button><button class="btn ghost" id="fStop" style="flex:1">Стоп</button></div>';}
+  function pad(n){return String(n).padStart(2,'0');}
+  mBody.innerHTML=tpl();
+  let iv=null;
+  const T=()=>document.getElementById('fT'),Stt=()=>document.getElementById('fSt');
+  function fmt(ms){const s=Math.max(0,Math.ceil(ms/1000));return pad(Math.floor(s/60))+':'+pad(s%60);}
+  function bind(){
+    document.getElementById('dMinus').onclick=()=>{if(running())return;dur=Math.max(25,dur-5);S.focusDur=dur;save();document.getElementById('dVal').textContent=dur;T().textContent=pad(dur)+':00';};
+    document.getElementById('dPlus').onclick=()=>{if(running())return;dur=Math.min(60,dur+5);S.focusDur=dur;save();document.getElementById('dVal').textContent=dur;T().textContent=pad(dur)+':00';};
+    document.getElementById('fStart').onclick=start;
+    document.getElementById('fStop').onclick=stop;
+  }
+  function running(){return S.focusEnd&&S.focusEnd>Date.now();}
+  function tick(){const left=S.focusEnd-Date.now();if(left<=0){done();return;}T().textContent=fmt(left);}
+  function start(){if(running())return;S.focusEnd=Date.now()+dur*60000;save();Stt().textContent='идёт… телефон можно убрать';T().style.color='var(--acid)';iv=setInterval(tick,500);tick();}
+  function stop(){S.focusEnd=0;save();clearInterval(iv);T().textContent=pad(dur)+':00';T().style.color='var(--acid)';Stt().textContent='остановлено';}
+  function done(){clearInterval(iv);S.focusEnd=0;save();T().textContent='00:00';Stt().textContent='готово';beep();markTrained();
+    showOver('good','БЛОК ВЗЯТ','Столько минут одного дела без телефона. Это и есть та концентрация, которую ты возвращаешь. Огонь.');}
+  bind();
+  // resume if a block is already running (survived lock / reopen)
+  if(running()){const total=S.focusDur||dur;document.getElementById('dVal').textContent=total;Stt().textContent='идёт… телефон можно убрать';T().style.color='var(--acid)';iv=setInterval(tick,500);tick();}
+  activeCleanup=()=>{clearInterval(iv);};
+}
+
+/* GRID memory — growing field 4x4 -> 5x5 -> 6x6 */
+function exGrid(){
+  mBody.innerHTML='<p class="mhint">Запомни узор, потом воспроизведи по памяти. Поле растёт 4×4 → 5×5 → 6×6. Точность ниже 75% — игра окончена.</p>'+
+    '<div class="readout"><div><b id="gR">1</b>раунд</div><div><b id="gSz">4×4</b>поле</div><div><b id="gAcc">—</b>точность</div><div><b id="gBest">'+(S.best.gridRound||0)+'</b>рекорд</div></div>'+
+    '<div class="stage"><div class="gridboard" id="gBoard"></div></div>'+
+    '<button class="btn go" id="gBtn" style="margin-top:14px">ПОКАЗАТЬ УЗОР</button>';
+  const board=document.getElementById('gBoard');const btn=document.getElementById('gBtn');
+  let cells=[],pat=[],phase='idle',round=1,picks=new Set(),SIZE=4;
+  function sizeFor(r){return r<=3?4:(r<=6?5:6);}
+  function build(){SIZE=sizeFor(round);board.style.gridTemplateColumns='repeat('+SIZE+',1fr)';board.innerHTML='';cells=[];
+    for(let i=0;i<SIZE*SIZE;i++){const c=document.createElement('div');c.className='gcell';c.addEventListener('pointerdown',()=>{if(phase!=='pick')return;const idx=cells.indexOf(c);if(picks.has(idx)){picks.delete(idx);c.classList.remove('pick');}else{picks.add(idx);c.classList.add('pick');}});board.appendChild(c);cells.push(c);}
+    document.getElementById('gSz').textContent=SIZE+'×'+SIZE;}
+  function clr(){cells.forEach(c=>c.className='gcell');}
+  function show(){build();picks.clear();pat=[];const n=Math.min(cells.length-1,3+SIZE+Math.floor(round/2));
+    while(pat.length<n){const r=Math.floor(Math.random()*cells.length);if(!pat.includes(r))pat.push(r);}
+    pat.forEach(i=>cells[i].classList.add('lit'));phase='show';btn.disabled=true;btn.textContent='Запоминай…';
+    setTimeout(()=>{clr();phase='pick';btn.disabled=false;btn.textContent='ПРОВЕРИТЬ';},2300+SIZE*150);}
+  function check(){let ok=0;cells.forEach((c,i)=>{const lit=pat.includes(i),pk=picks.has(i);if(lit&&pk){c.className='gcell good';ok++;}else if(lit&&!pk){c.className='gcell lit';}else if(!lit&&pk){c.className='gcell bad';}});
+    const acc=Math.round(ok/pat.length*100);document.getElementById('gAcc').textContent=acc+'%';markTrained();
+    if(acc<75){phase='over';if((S.best.gridRound||0)<round-1){S.best.gridRound=round-1;}save();document.getElementById('gBest').textContent=S.best.gridRound||0;
+      btn.textContent='ЕЩЁ РАЗ';
+      setTimeout(()=>showOver(round>3?'good':'bad','РАУНД '+round,'Точность '+acc+'% — ниже 75%, игра окончена. Чисто пройдено раундов: '+(round-1)+'. Рекорд: '+(S.best.gridRound||0)+'.'),300);
+    } else {
+      if((S.best.gridRound||0)<round){S.best.gridRound=round;}document.getElementById('gBest').textContent=S.best.gridRound||0;save();phase='done';btn.textContent='СЛЕДУЮЩИЙ РАУНД';
+    }}
+  build();
+  btn.onclick=()=>{if(phase==='over'){round=1;document.getElementById('gR').textContent=round;phase='idle';show();return;}if(phase==='idle'||phase==='done'){if(phase==='done'){round++;document.getElementById('gR').textContent=round;}show();}else if(phase==='pick'){check();}};
+  activeCleanup=()=>{};
+}
+
+/* FLOW — position memory: запомни 1..9, переверни, прожми по порядку. Усложняется, конец при <75% */
+function exFlow(){
+  mBody.innerHTML='<p class="mhint">Запомни, где какие числа (10 секунд). Карты перевернутся — прожми их по порядку 1→9 по памяти. Каждый уровень: на 0,2с меньше времени; после 5-го числа разлетаются по экрану. Ошибся — игра окончена.</p>'+
+    '<div class="readout"><div><b id="flLvl">1</b>уровень</div><div><b id="flAcc">—</b>точность</div><div><b id="flBest">'+(S.best.flowLevel||0)+'</b>рекорд</div></div>'+
+    '<div class="membar" id="flBarWrap" style="display:none"><i id="flBar"></i></div>'+
+    '<div class="stage"><div class="fboard grid" id="flBoard"></div></div>'+
+    '<button class="btn go" id="flBtn" style="margin-top:14px">СТАРТ</button>';
+  const board=document.getElementById('flBoard');const btn=document.getElementById('flBtn');
+  let level=1,phase='idle',expected=1,correct=0,mistakes=0,cards=[],raf,memEnd=0,ended=false;
+  function memTime(l){return Math.max(2000,10000-(l-1)*200);}
+  function scatter(l){return l>5;}
+  function rand(a,b){return a+Math.random()*(b-a);}
+  function buildPositions(sc){
+    const sz=board.clientWidth||300;const out=[];
+    if(!sc){for(let i=0;i<9;i++)out.push(null);return out;}
+    const cs=58,tries=200;
+    for(let i=0;i<9;i++){let p=null;for(let t=0;t<tries;t++){const x=rand(2,sz-cs-2),y=rand(2,sz-cs-2);let ok=true;for(const q of out){if(q&&Math.abs(q.x-x)<cs*0.85&&Math.abs(q.y-y)<cs*0.85){ok=false;break;}}if(ok){p={x,y};break;}}out.push(p||{x:rand(2,sz-cs-2),y:rand(2,sz-cs-2)});}
+    return out;
+  }
+  function startLevel(){
+    btn.style.display='none';ended=false;expected=1;correct=0;mistakes=0;
+    const sc=scatter(level);board.className='fboard '+(sc?'scatter':'grid');board.innerHTML='';
+    let vals=[1,2,3,4,5,6,7,8,9];for(let i=vals.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[vals[i],vals[j]]=[vals[j],vals[i]];}
+    const pos=buildPositions(sc);
+    cards=vals.map((v,i)=>{const c=document.createElement('div');c.className='fc';c.textContent=v;c._val=v;c._done=false;
+      if(sc&&pos[i]){c.style.left=pos[i].x+'px';c.style.top=pos[i].y+'px';}
+      c.onpointerdown=()=>tap(c);board.appendChild(c);return c;});
+    phase='memorize';document.getElementById('flLvl').textContent=level;
+    const wrap=document.getElementById('flBarWrap');wrap.style.display='block';const bar=document.getElementById('flBar');
+    const dur=memTime(level);memEnd=Date.now()+dur;
+    (function anim(){if(phase!=='memorize')return;const left=memEnd-Date.now();bar.style.width=Math.max(0,left/dur*100)+'%';if(left<=0){flip();return;}raf=requestAnimationFrame(anim);})();
+  }
+  function flip(){phase='recall';document.getElementById('flBarWrap').style.display='none';cards.forEach(c=>{if(!c._done){c.textContent='?';c.style.color='var(--ink-faint)';}});}
+  function tap(c){if(phase!=='recall'||ended||c._done)return;
+    if(c._val===expected){c._done=true;c.className='fc green';c.textContent=c._val;correct++;}
+    else{mistakes++;c.className='fc red';c.textContent=c._val;const real=cards.find(x=>x._val===expected);if(real){real._done=true;real.className='fc green';real.textContent=real._val;}}
+    expected++;
+    if(expected>9)finishLevel();
+  }
+  function finishLevel(){
+    const acc=Math.round(correct/9*100);document.getElementById('flAcc').textContent=acc+'%';
+    if(mistakes>0){ended=true;phase='over';markTrained();
+      if((S.best.flowLevel||0)<level-1){S.best.flowLevel=level-1;}
+      save();document.getElementById('flBest').textContent=S.best.flowLevel||0;
+      setTimeout(()=>showOver(level>3?'good':'bad','УРОВЕНЬ '+level,(mistakes===1?'Одна ошибка':mistakes+' ошибки')+' — игра окончена. Чисто пройдено уровней: '+(level-1)+'. Рекорд: '+(S.best.flowLevel||0)+'.'),300);
+      btn.textContent='ЕЩЁ РАЗ';btn.style.display='block';level=1;phase='idle';
+    } else {
+      markTrained();if((S.best.flowLevel||0)<level){S.best.flowLevel=level;}save();document.getElementById('flBest').textContent=S.best.flowLevel||0;beep();
+      level++;phase='idle';btn.textContent='УРОВЕНЬ '+level+' →';btn.style.display='block';
+    }
+  }
+  btn.onclick=startLevel;
+  activeCleanup=()=>{ended=true;phase='over';cancelAnimationFrame(raf);};
+}
+
+/* MAZE — 30 уровней, плавная сложность, чистые тонкие стены, джойстик под пальцем */
+function exMaze(){
+  const MAXLVL=30;
+  mBody.innerHTML='<p class="mhint">Проведи квадрат к красному выходу. Коснись поля в любом месте — там появится джойстик. Квадрат скользит по инерции. Коснулся стены — назад на старт.</p>'+
+    '<div class="readout"><div><b id="mzLvl">1</b>/ '+MAXLVL+'</div><div><b id="mzDeath">0</b>врезался</div><div><b id="mzBest">'+(S.best.maze||0)+'</b>рекорд</div></div>'+
+    '<div id="mzStage"><canvas id="mzCanvas"></canvas><div class="joy" id="mzJoy"><div class="knob" id="mzKnob"></div></div></div>';
+  const stage=document.getElementById('mzStage'),cv=document.getElementById('mzCanvas'),ctx=cv.getContext('2d');
+  const joy=document.getElementById('mzJoy'),knob=document.getElementById('mzKnob');
+  let level=1,deaths=0,raf,ended=false;
+  let size=0,C=0,cellPx=0,wallT=0,off=0,half=0,cells=null,walls=[],px=0,py=0,vx=0,vy=0,goalc=null,startc=null;
+  let jx=0,jy=0;const ACC=0.42,FR=0.92,maxR=72,dead=16;
+  function sizeCanvas(){size=Math.floor(Math.min(stage.clientWidth,stage.clientHeight));cv.width=size;cv.height=size;}
+  function carveDFS(c){
+    const cs=new Array(c*c);for(let i=0;i<c*c;i++)cs[i]={n:true,e:true,s:true,w:true};
+    const vis=new Uint8Array(c*c);const stack=[[0,0]];vis[0]=1;
+    const dirs=[['n',0,-1],['e',1,0],['s',0,1],['w',-1,0]];const opp={n:'s',e:'w',s:'n',w:'e'};const idx=(x,y)=>y*c+x;
+    while(stack.length){const t=stack[stack.length-1],x=t[0],y=t[1];const opts=[];
+      for(const[d,dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<c&&ny<c&&!vis[idx(nx,ny)])opts.push([d,dx,dy]);}
+      if(!opts.length){stack.pop();continue;}
+      const[d,dx,dy]=opts[Math.floor(Math.random()*opts.length)];const nx=x+dx,ny=y+dy;
+      cs[idx(x,y)][d]=false;cs[idx(nx,ny)][opp[d]]=false;vis[idx(nx,ny)]=1;stack.push([nx,ny]);}
+    return cs;
+  }
+  function solTurns(cs,c){
+    const idx=(x,y)=>y*c+x;const prev=new Int32Array(c*c).fill(-1);const q=[0];prev[0]=0;const goal=c*c-1;
+    const dirs=[['n',0,-1],['e',1,0],['s',0,1],['w',-1,0]];
+    while(q.length){const cur=q.shift();if(cur===goal)break;const cx=cur%c,cy=(cur/c)|0;
+      for(const[d,dx,dy]of dirs){if(!cs[cur][d]){const nx=cx+dx,ny=cy+dy;if(nx>=0&&ny>=0&&nx<c&&ny<c){const ni=idx(nx,ny);if(prev[ni]===-1){prev[ni]=cur;q.push(ni);}}}}}
+    if(prev[goal]===-1)return 0;const path=[];let cc=goal;while(cc!==0){path.push(cc);cc=prev[cc];}path.push(0);
+    let turns=0;for(let i=2;i<path.length;i++){const a=path[i-2],b=path[i-1],e=path[i];
+      const d1x=(b%c)-(a%c),d1y=((b/c)|0)-((a/c)|0),d2x=(e%c)-(b%c),d2y=((e/c)|0)-((b/c)|0);if(d1x!==d2x||d1y!==d2y)turns++;}
+    return turns;
+  }
+  function sizeFor(l){return Math.min(13,5+Math.round(l/3.5));}
+  function targetFor(l){return Math.round(5+l*1.5);}
+  function genMaze(c){
+    C=c;const target=targetFor(level);let best=null,bestSc=Infinity;const K=18;
+    for(let k=0;k<K;k++){const cs=carveDFS(c);const t=solTurns(cs,c);const s=Math.abs(t-target);if(s<bestSc){bestSc=s;best=cs;}}
+    cells=best;startc={x:0,y:0};goalc={x:C-1,y:C-1};
+  }
+  function buildWalls(){walls=[];const T=wallT;
+    for(let y=0;y<C;y++)for(let x=0;x<C;x++){const c=cells[y*C+x],ox=off+x*cellPx,oy=off+y*cellPx;
+      if(c.n)walls.push([ox,oy,cellPx+T,T]);
+      if(c.w)walls.push([ox,oy,T,cellPx+T]);
+      if(x===C-1&&c.e)walls.push([ox+cellPx,oy,T,cellPx+T]);
+      if(y===C-1&&c.s)walls.push([ox,oy+cellPx,cellPx+T,T]);}
+  }
+  let occ=null;
+  function buildOcc(){occ=new Uint8Array(size*size);
+    for(const w of walls){const x0=Math.max(0,Math.floor(w[0])),y0=Math.max(0,Math.floor(w[1])),x1=Math.min(size,Math.ceil(w[0]+w[2])),y1=Math.min(size,Math.ceil(w[1]+w[3]));
+      for(let yy=y0;yy<y1;yy++){const b=yy*size;for(let xx=x0;xx<x1;xx++)occ[b+xx]=1;}}}
+  function blocked(x,y){const xi=x|0,yi=y|0;if(xi<0||yi<0||xi>=size||yi>=size)return true;return occ[yi*size+xi]===1;}
+  function setup(){sizeCanvas();genMaze(sizeFor(level));
+    wallT=Math.max(2,Math.round(size/C*0.12));cellPx=Math.floor((size-wallT)/C);off=Math.round((size-(cellPx*C+wallT))/2);half=Math.max(3,Math.floor(cellPx*0.15));
+    buildWalls();buildOcc();respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
+  function cellCenter(cx,cy){return [off+cx*cellPx+(cellPx+wallT)/2, off+cy*cellPx+(cellPx+wallT)/2];}
+  function respawn(){const c=cellCenter(startc.x,startc.y);px=c[0];py=c[1];vx=vy=0;}
+  function hitWall(x,y){const l=x-half,r=x+half,t=y-half,b=y+half;for(const w of walls){if(r>w[0]&&l<w[0]+w[2]&&b>w[1]&&t<w[1]+w[3])return true;}return false;}
+  function loop(){if(ended)return;
+    vx=(vx+jx*ACC)*FR;vy=(vy+jy*ACC)*FR;
+    const steps=6;let hit=false;
+    for(let i=0;i<steps;i++){const nx=px+vx/steps,ny=py+vy/steps;if(hitWall(nx,ny)){hit=true;break;}px=nx;py=ny;}
+    if(hit){deaths++;document.getElementById('mzDeath').textContent=deaths;respawn();}
+    const g=cellCenter(goalc.x,goalc.y);
+    if(Math.abs(px-g[0])<cellPx*0.4&&Math.abs(py-g[1])<cellPx*0.4){win();return;}
+    draw();raf=requestAnimationFrame(loop);}
+  function draw(){ctx.fillStyle='#000';ctx.fillRect(0,0,size,size);
+    // draw walls as stroked lines — no overlap artifacts at corners
+    ctx.strokeStyle='#19d3e6';ctx.lineWidth=wallT;ctx.lineCap='square';ctx.lineJoin='miter';
+    ctx.beginPath();
+    for(let y=0;y<C;y++)for(let x=0;x<C;x++){const c=cells[y*C+x];const ox=off+x*cellPx+wallT/2,oy=off+y*cellPx+wallT/2,ex=ox+cellPx-wallT,ey=oy+cellPx-wallT;
+      if(c.n){ctx.moveTo(ox,oy);ctx.lineTo(ex+wallT,oy);}
+      if(c.w){ctx.moveTo(ox,oy);ctx.lineTo(ox,ey+wallT);}
+      if(x===C-1&&c.e){ctx.moveTo(ex+wallT,oy);ctx.lineTo(ex+wallT,ey+wallT);}
+      if(y===C-1&&c.s){ctx.moveTo(ox,ey+wallT);ctx.lineTo(ex+wallT,ey+wallT);}}
+    ctx.stroke();
+    const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
+    ctx.fillStyle='#c6f432';ctx.fillRect(px-half,py-half,half*2,half*2);
+    // line-of-sight light: лучи останавливаются о стены, за стеной — темнота
+    const R=cellPx*2.0,rays=140,step=Math.max(2,R/28);const poly=[];
+    for(let i=0;i<rays;i++){const ang=i/rays*Math.PI*2,dx=Math.cos(ang),dy=Math.sin(ang);let dist=0,hx=px,hy=py;
+      while(dist<R){dist+=step;const nx=px+dx*dist,ny=py+dy*dist;hx=nx;hy=ny;if(blocked(nx,ny))break;}poly.push([hx,hy]);}
+    // тьма всюду, кроме полигона видимости
+    ctx.fillStyle='#000';ctx.beginPath();ctx.rect(0,0,size,size);
+    ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();ctx.fill('evenodd');
+    // мягкое затухание к краю света
+    ctx.save();ctx.beginPath();ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();ctx.clip();
+    const grd=ctx.createRadialGradient(px,py,R*0.4,px,py,R);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,0.85)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,size,size);ctx.restore();}
+  function win(){beep();if((S.best.maze||0)<Math.min(level,MAXLVL)){S.best.maze=Math.min(level,MAXLVL);document.getElementById('mzBest').textContent=S.best.maze;}markTrained();save();
+    if(level>=MAXLVL){showOver('good','🏁 30/30','Все тридцать уровней пройдены. Лабиринты тебе больше не страшны. Дальше — просто для удовольствия.');setup();raf=requestAnimationFrame(loop);return;}
+    level++;setup();raf=requestAnimationFrame(loop);}
+  // joystick appears under finger
+  function pt(e){const r=stage.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
+  let ox=0,oy=0,jact=false;
+  function jstart(e){const p=pt(e);ox=p[0];oy=p[1];jact=true;joy.style.display='block';joy.style.left=(ox-75)+'px';joy.style.top=(oy-75)+'px';knob.style.left='45px';knob.style.top='45px';jx=jy=0;e.preventDefault();}
+  function jmove(e){if(!jact)return;const p=pt(e);let dx=p[0]-ox,dy=p[1]-oy;const dist=Math.hypot(dx,dy)||0.0001;const kd=Math.min(dist,maxR);
+    knob.style.left=(45+dx/dist*kd)+'px';knob.style.top=(45+dy/dist*kd)+'px';
+    if(dist<dead){jx=jy=0;}else{const m=Math.min(1,(dist-dead)/(maxR-dead));jx=dx/dist*m;jy=dy/dist*m;}}
+  function jend(){jact=false;jx=jy=0;joy.style.display='none';}
+  stage.addEventListener('pointerdown',jstart);
+  stage.addEventListener('pointermove',jmove);
+  stage.addEventListener('pointerup',jend);
+  stage.addEventListener('pointerleave',jend);
+  stage.addEventListener('pointercancel',jend);
+  setTimeout(()=>{setup();loop();},40);
+  activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);};
+}
+/* TRUTH CARDS — craving tool */
+const TRUTH=[
+  'Тяга пройдёт за 2 минуты, если её не кормить. Ты сильнее минуты.',
+  'Лента не сделает тебя счастливее. Она сделает следующую минуту чуть менее скучной — и украдёт час.',
+  'Ты не отдыхаешь в телефоне. Ты прячешься. Отдых — это тишина, а не поток.',
+  'Через год ты не вспомнишь ни одного шортса. Но вспомнишь, кем стал.',
+  'Скука — это не сигнал достать телефон. Это сигнал, что мозг готов к чему-то настоящему.',
+  'Каждый раз, когда не достаёшь телефон, ты немного перепрошиваешь себя. Прямо сейчас — момент.',
+  'Алгоритм не спит и не устаёт. Победить его волей нельзя. Можно только закрыть.',
+  'Ты хочешь не телефон. Ты хочешь не чувствовать то, что чувствуешь. Побудь с этим 1 минуту.',
+  'Дёшево — это пять минут залипнуть. Дорого — это потом ненавидеть себя за вечер. Считай цену.',
+  'Сильный — это не тот, кому не хочется. Это тот, кому хочется, и кто всё равно не стал.',
+];
+function exTruth(){
+  let i=Math.floor(Math.random()*TRUTH.length);
+  mBody.innerHTML='<p class="mhint">Накрыло тягой? Читай. Медленно. По одной карте.</p>'+
+    '<div class="stage"><div class="truthcard" id="tCard"></div></div>'+
+    '<div style="display:flex;gap:9px;margin-top:14px"><button class="btn go" id="tNext" style="flex:2">Ещё карта</button><button class="btn ghost" id="tDone" style="flex:1">Отпустило</button></div>';
+  const card=document.getElementById('tCard');
+  function show(){card.style.opacity=0;setTimeout(()=>{card.textContent=TRUTH[i];card.style.transition='opacity .3s';card.style.opacity=1;},120);}
+  show();
+  document.getElementById('tNext').onclick=()=>{i=(i+1)%TRUTH.length;show();};
+  document.getElementById('tDone').onclick=()=>{toast('Молодец. Переждал волну.');closeModal();};
+  activeCleanup=()=>{};
+}
+
+/* TUNNEL — sustained attention, hold finger on slowly moving dot */
+function exTunnel(){
+  mBody.innerHTML='<p class="mhint">Прижми палец к точке и удерживай, пока она медленно ползёт. Отпустил или сильно отстал — счёт сбрасывается. Держи как можно дольше.</p>'+
+    '<div class="readout"><div><b id="uNow">0.0</b>держишь</div><div><b id="uBest">'+(S.best.tunnel?S.best.tunnel.toFixed(1):'—')+'</b>рекорд</div></div>'+
+    '<div class="stage" id="uStage"><div id="tunnelDot"></div></div>';
+  const stage=document.getElementById('uStage'),dot=document.getElementById('tunnelDot');
+  const R=50;
+  let x=80,y=80,tx=80,ty=80,raf,holding=false,holdStart=0,now=0,ended=false,lpx=0,lpy=0,haveP=false;
+  function bounds(){const r=stage.getBoundingClientRect();return{w:Math.max(40,r.width-2*R),h:Math.max(40,r.height-2*R)};}
+  function newT(){const b=bounds();tx=Math.random()*b.w;ty=Math.random()*b.h;}
+  setTimeout(()=>{const b=bounds();x=b.w/2;y=b.h/2;newT();},30);
+  function dotCenter(){const r=dot.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2];}
+  function loop(){if(ended)return;
+    x+=(tx-x)*0.011;y+=(ty-y)*0.011;
+    if(Math.abs(tx-x)<4&&Math.abs(ty-y)<4)newT();
+    dot.style.transform='translate('+x+'px,'+y+'px)';
+    if(holding&&haveP){const c=dotCenter();const d=Math.hypot(lpx-c[0],lpy-c[1]);
+      if(d>R+22){breakHold();}
+      else{now=(Date.now()-holdStart)/1000;document.getElementById('uNow').textContent=now.toFixed(1);}}
+    raf=requestAnimationFrame(loop);}
+  loop();
+  function near(px,py){const c=dotCenter();return Math.hypot(px-c[0],py-c[1])<R+18;}
+  function start(e){lpx=e.clientX;lpy=e.clientY;haveP=true;if(near(e.clientX,e.clientY)){holding=true;holdStart=Date.now();dot.classList.add('hold');}}
+  function move(e){lpx=e.clientX;lpy=e.clientY;haveP=true;}
+  function breakHold(){if(!holding)return;holding=false;dot.classList.remove('hold');
+    if(now>0&&(!S.best.tunnel||now>S.best.tunnel)){S.best.tunnel=now;document.getElementById('uBest').textContent=now.toFixed(1);markTrained();save();toast('🏆 Рекорд: '+now.toFixed(1)+'с');}
+    now=0;document.getElementById('uNow').textContent='0.0';}
+  stage.addEventListener('pointerdown',start);
+  stage.addEventListener('pointermove',move);
+  stage.addEventListener('pointerup',breakHold);
+  stage.addEventListener('pointerleave',breakHold);
+  stage.addEventListener('pointercancel',breakHold);
+  activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);};
+}
+/* BEAST — brutal fast go/no-go */
+function exBeast(){
+  mBody.innerHTML='<p class="mhint">Жёстко и быстро. КРУГ — жми мгновенно. КВАДРАТ — терпи. Окно короткое, ловушек больше. 90 секунд. Ошибка дорогая.</p>'+
+    '<div class="readout"><div><b id="bHit">0</b>верно</div><div><b id="bStop">0</b>сдержался</div><div><b id="bErr">0</b>ошибок</div><div><b id="bTime">90</b>сек</div></div>'+
+    '<div class="stage" id="bStage"></div>';
+  const stage=document.getElementById('bStage');
+  let hit=0,stop=0,err=0,time=90,ended=false,cur=null,awaiting=false,t1,t2;
+  function show(){if(ended)return;const go=Math.random()<0.55;cur=go?'go':'no';awaiting=true;
+    const el=document.createElement('div');el.className='gnstim '+(go?'circle':'square');stage.innerHTML='';stage.appendChild(el);
+    t1=setTimeout(()=>{if(awaiting){if(cur==='go'){err++;document.getElementById('bErr').textContent=err;}else{stop++;document.getElementById('bStop').textContent=stop;}}awaiting=false;stage.innerHTML='';t2=setTimeout(show,200+Math.random()*200);},600);}
+  function tap(){if(ended||!awaiting)return;if(cur==='go'){hit++;document.getElementById('bHit').textContent=hit;}else{err++;document.getElementById('bErr').textContent=err;}awaiting=false;clearTimeout(t1);stage.innerHTML='';t2=setTimeout(show,200+Math.random()*200);}
+  stage.addEventListener('pointerdown',tap);setTimeout(show,500);
+  const timer=setInterval(()=>{time--;document.getElementById('bTime').textContent=time;if(time<=0)end();},1000);
+  function end(){ended=true;clearInterval(timer);clearTimeout(t1);clearTimeout(t2);const sc=Math.max(0,hit*4+stop*4-err*10);if((S.best.beast||0)<sc){S.best.beast=sc;}markTrained();save();
+    stage.innerHTML='<div style="text-align:center"><div class="bignum">'+sc+'</div><div style="color:var(--ink-dim);font-size:13px;margin-top:6px">очков · рекорд '+(S.best.beast||0)+'</div></div>';}
+  activeCleanup=()=>{ended=true;clearInterval(timer);clearTimeout(t1);clearTimeout(t2);};
+}
+
+/* ---------- progress ---------- */
+function renderProgress(){
+  document.getElementById('stLvl').textContent=S.level;
+  document.getElementById('stDay').textContent=Math.min(programDay(),PROGRAM_DAYS);
+  document.getElementById('stPass').textContent=passedDays();
+  document.getElementById('stFail').textContent=failedDays();
+  const hist=S.dayHistory||[];
+  let hhtml='';
+  hist.slice(-10).reverse().forEach(h=>{
+    hhtml+='<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="font-family:Space Mono,monospace;color:var(--ink-faint)">День '+h.day+(h.date?' · '+h.date:'')+'</span><span style="color:'+(h.result==='pass'?'var(--acid)':'var(--hazard)')+'">'+(h.result==='pass'?'✓ закрыт':'✗ пропущен')+'</span></div>';
+  });
+  const hw=document.getElementById('histWrap');
+  if(hw)hw.innerHTML=hhtml||'<div style="color:var(--ink-faint);font-size:13px">Пока нет закрытых дней</div>';
+  const mg=document.getElementById('moodGraph');
+  if(mg){const withMood=hist.filter(x=>x.mood).slice(-14);
+    if(!withMood.length){mg.innerHTML='<div style="color:var(--ink-faint);font-size:12px;align-self:center">Отмечай настроение в конце дня — здесь появится график</div>';}
+    else{mg.innerHTML=withMood.map(x=>{const m=MOODS.find(mm=>mm.v===x.mood)||MOODS[2];return '<div class="gb" style="height:'+(x.mood/5*100)+'%"><span class="ge">'+m.e+'</span></div>';}).join('');}}
+  document.getElementById('progQuote').textContent=rankFor(S.level);
+}
+function exportData(){try{const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='detoX-backup-'+localDate()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('💾 Копия в Загрузках');}catch(e){toast('Не вышло сохранить');}}
+function importData(file){const r=new FileReader();r.onload=()=>{try{S=migrate(JSON.parse(r.result));save();renderToday();renderProgress();toast('✅ Восстановлено');}catch(e){toast('Файл не распознан');}};r.readAsText(file);}
+document.getElementById('exportBtn').onclick=exportData;
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value='';};
+document.getElementById('resetBtn').onclick=()=>{if(confirm('Сбросить весь прогресс? Это необратимо.')){S=DEFAULT_STATE();save();renderToday();renderProgress();toast('Сброшено.');}};
+
+/* ---------- nav / boot ---------- */
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200);}
+
+/* ===================== BODY / ТЕЛО ===================== */
+function parseYmd(s){const a=s.split('-').map(Number);return new Date(a[0],a[1]-1,a[2]);}
+function daysSince(s){if(!s)return 999;return Math.floor((Date.now()-parseYmd(s).getTime())/86400000);}
+function bWeek(){if(!S.body.start)return 1;return Math.min(12,Math.floor((Date.now()-S.body.start)/(7*86400000))+1);}
+function bPhase(w){return w<=3?1:(w<=7?2:3);}
+function nextSession(){return ['A','B','C'][S.body.rotation%3];}
+function pullReps(week,max){const p=bPhase(week);if(max<=5)return p===1?Math.max(2,max-1):(p===2?max:max+1);if(p===1)return Math.max(3,Math.round(max*0.6));if(p===2)return Math.max(4,Math.round(max*0.7));return Math.max(5,max-1);}
+function sessionDef(letter,week,max){const p=bPhase(week);const pr=pullReps(week,max);const neg=(max<7&&p<3);
+  if(letter==='A')return{letter:'A',focus:'Спина и тяга — главный день под цель',items:[
+    {name:'Скапулярные подтягивания',sets:3,reps:8,rest:45,note:'Вис на прямых руках, опусти лопатки вниз («в задние карманы»), без сгибания локтей. Включает спину перед работой.'},
+    ].concat(neg?[{name:'Негативы, широкий хват',sets:4,reps:4,rest:120,note:'Запрыгни в верхнюю точку, опускайся медленно 5 секунд. Спина напряжена, лопатки сведены. Строит силу быстрее всего.'}]:[]).concat([
+    {name:'Подтягивания широким хватом',sets:4,reps:pr,rest:p===3?180:150,note:'Грудь веди к перекладине, локти тяни вниз. Поясница чуть включена, верх спины НЕ круглить.'},
+    {name:'Австралийские тяги (горизонтальные)',sets:3,reps:10,rest:90,note:'Тело прямой струной, своди лопатки, тяни себя грудью к опоре. Резина или низкая перекладина.'},
+    {name:'Подъём ног или коленей в висе',sets:3,reps:10,rest:45,note:'Без раскачки, контролируй, кор напряжён.'}])};
+  if(letter==='B')return{letter:'B',focus:'Жим и кор — баланс и восстановление спины',items:[
+    {name:'Отжимания',sets:4,reps:p===1?10:(p===2?14:18),rest:75,note:'Тело прямое, локти под ~45°, грудь почти до пола.'},
+    {name:'Брусья или отжимания узким хватом',sets:3,reps:8,rest:90,note:'Нет брусьев — отжимания узким (ромб) хватом.'},
+    {name:'Лёгкие подтягивания (грязинг)',sets:3,reps:3,rest:60,note:'Без отказа, чисто и легко — «смазка» нервной системы, двигает цифру без выгорания.'},
+    {name:'Полый присед (hollow hold)',sets:3,reps:'30-45 сек',rest:45,note:'Поясница прижата к полу, руки и ноги вытянуты, поясницу не отрывай.'},
+    {name:'Кардио (ходьба/лёгкий бег)',sets:1,reps:'12-15 мин',rest:0,note:'Спокойное кардио — работает на жиросжигание.'}]};
+  return{letter:'C',focus:'Объём подтягиваний и ноги — сила и жиросжигание',items:[
+    {name:'Подтягивания узким/нейтральным хватом',sets:5,reps:Math.max(3,Math.round(max*0.7)),rest:120,note:'Хват, где ты сильнее. Копишь объём — главный двигатель к 15.'},
+    {name:'Подтягивания широким хватом',sets:3,reps:pr,rest:150,note:'Техника как в день А: грудь к перекладине, лопатки вниз.'},
+    {name:'Приседания или выпады',sets:3,reps:15,rest:75,note:'Ноги — крупные мышцы, жгут много калорий.'},
+    {name:'Скручивания / велосипед',sets:3,reps:15,rest:40,note:'Медленно, чувствуй пресс, без рывков.'},
+    {name:'Кардио',sets:1,reps:'15-20 мин',rest:0,note:'Быстрая ходьба или лёгкий бег.'}]};
+}
+let calMonth=null;
+function renderBody(){
+  const b=S.body,week=bWeek(),phase=bPhase(week),letter=nextSession(),max=b.max;
+  const cont=document.getElementById('bodyContent');if(!cont)return;
+  let html='';
+  html+='<div class="bcard"><div class="brow"><div><h3>Цель: 15 подтягиваний</h3><div style="color:var(--ink-dim);font-size:12px;margin-top:3px">Неделя '+week+'/12 · Фаза '+phase+' · твой максимум: '+max+'</div></div><span class="pill">176см · '+b.weight+'кг</span></div></div>';
+  const needPhoto=!b.photos.length||daysSince(b.lastPhoto)>=14;
+  if(needPhoto)html+='<div class="bcard" style="border-color:var(--gold)"><div class="brow"><div style="font-size:13px">'+(!b.photos.length?'📸 Сделай стартовое фото — точка отсчёта':'📸 Прошло 2 недели — время нового фото')+'</div><button class="btn go" style="width:auto;padding:10px 14px" id="bPhotoBtn">Фото</button></div></div>';
+  html+='<div class="bcard"><div class="brow"><div><h3>Тренировка '+letter+'</h3><div style="color:var(--ink-dim);font-size:12px;margin-top:3px">'+sessionDef(letter,week,max).focus+'</div></div></div><button class="btn go" style="margin-top:12px" id="startWkBtn">НАЧАТЬ ТРЕНИРОВКУ</button></div>';
+  html+='<div class="bcard"><div class="brow"><h3 id="calTitle">—</h3><div style="display:flex;gap:6px"><button class="calnav" data-m="-1">‹</button><button class="calnav" data-m="1">›</button></div></div><div id="calWrap"></div><div style="font-size:11px;color:var(--ink-faint);margin-top:8px;font-family:Space Mono,monospace">обведённые — дни тренировок (пн/ср/пт) · залитые — выполнено, нажми чтобы посмотреть</div></div>';
+  html+='<div class="bcard"><h3>Фотопрогресс</h3><input type="file" id="bPhoto" accept="image/*" capture="environment" style="display:none"><div class="photostrip" id="photoStrip" style="margin-top:10px"></div><button class="btn ghost" id="addPhotoBtn" style="margin-top:10px">＋ Добавить фото</button></div>';
+  html+='<div class="bcard"><h3>Текущее состояние</h3><div style="color:var(--ink-dim);font-size:12px;margin:5px 0 12px;line-height:1.5">Меняй максимум — программа сама подстроит сложность. Стало легко — повысь, тяжело — понизь. Тренировки при этом не трогаются.</div><div class="brow"><span style="font-size:14px">Мой максимум подтягиваний</span><div style="display:flex;align-items:center;gap:10px"><button class="calnav" id="maxMinus">−</button><b id="maxVal" style="font-family:Space Mono,monospace;font-size:18px;min-width:22px;text-align:center">'+max+'</b><button class="calnav" id="maxPlus">+</button></div></div></div>';
+  cont.innerHTML=html;
+  const pb=document.getElementById('bPhotoBtn');if(pb)pb.onclick=()=>document.getElementById('bPhoto').click();
+  document.getElementById('addPhotoBtn').onclick=()=>document.getElementById('bPhoto').click();
+  document.getElementById('bPhoto').onchange=e=>{if(e.target.files[0])addPhoto(e.target.files[0]);e.target.value='';};
+  document.getElementById('startWkBtn').onclick=startWorkout;
+  document.getElementById('maxMinus').onclick=()=>{b.max=Math.max(1,b.max-1);save();renderBody();};
+  document.getElementById('maxPlus').onclick=()=>{b.max=Math.min(20,b.max+1);save();renderBody();};
+  if(!calMonth)calMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+  cont.querySelectorAll('.calnav[data-m]').forEach(btn=>btn.onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+parseInt(btn.dataset.m),1);renderCal();});
+  renderCal();renderPhotos();
+}
+function renderCal(){
+  const wrap=document.getElementById('calWrap'),t=document.getElementById('calTitle');if(!wrap)return;
+  const M=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  t.textContent=M[calMonth.getMonth()]+' '+calMonth.getFullYear();
+  const first=new Date(calMonth.getFullYear(),calMonth.getMonth(),1);const startDow=(first.getDay()+6)%7;
+  const dim=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,0).getDate();const today=localDate();
+  const wd=['пн','вт','ср','чт','пт','сб','вс'];
+  let html='<div class="cal">'+wd.map(w=>'<div class="wd">'+w+'</div>').join('');
+  for(let i=0;i<startDow;i++)html+='<div class="cd empty"></div>';
+  for(let day=1;day<=dim;day++){const dt=new Date(calMonth.getFullYear(),calMonth.getMonth(),day);const ds=localDate(dt);const dow=dt.getDay();
+    const isTrain=(dow===1||dow===3||dow===5);const done=!!S.body.log[ds];const isToday=ds===today;
+    html+='<div class="cd'+(isTrain?' tr':'')+(done?' done':'')+(isToday?' today':'')+'" data-d="'+ds+'">'+day+'</div>';}
+  html+='</div>';wrap.innerHTML=html;
+  wrap.querySelectorAll('.cd[data-d]').forEach(c=>{const ds=c.dataset.d;
+    if(S.body.log[ds]){c.onclick=()=>showDay(ds);}
+    else if(c.classList.contains('tr')){c.onclick=()=>{
+      const dt=new Date(ds+'T12:00:00');const isPast=dt<new Date(new Date().toDateString());
+      if(isPast){toast('Тренировка не была выполнена в этот день');}
+      else{document.querySelectorAll('.navbtn').forEach(n=>n.classList.remove('active'));document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.querySelector('.navbtn[data-v="body"]').classList.add('active');document.getElementById('v-body').classList.add('active');startWorkout();}
+    };}
+  });
+}
+function showDay(ds){const e=S.body.log[ds];if(!e)return;document.getElementById('mTitle').textContent='Тренировка '+e.session;modal.classList.add('open');
+  let html='<div style="color:var(--ink-dim);font-size:12px;margin-bottom:12px;font-family:Space Mono,monospace">'+ds+' · неделя '+(e.week||'?')+(e.diff?' · сложность '+e.diff+'/10':'')+'</div>';
+  e.items.forEach(it=>{html+='<div class="brow" style="padding:10px 0;border-bottom:1px solid var(--line)"><span style="font-size:13px">'+it.name+'</span><span style="font-family:Space Mono,monospace;color:var(--acid)">'+(it.actual||it.target)+'</span></div>';});
+  html+='<button class="btn ghost" style="margin-top:14px" onclick="closeModal()">Закрыть</button>';
+  mBody.innerHTML=html;activeCleanup=null;}
+function startWorkout(){
+  const week=bWeek(),max=S.body.max,letter=nextSession(),sess=sessionDef(letter,week,max);
+  document.getElementById('mTitle').textContent='Тренировка '+letter;modal.classList.add('open');
+  let exIdx=0,setIdx=0,restIv=null;
+  const results=sess.items.map(it=>({name:it.name,target:''+it.reps,actual:''}));
+  function restFor(it,ei,si){let r=it.rest;if(si>0)r+=10;if(ei>=Math.ceil(sess.items.length/2))r+=15;return r;}
+  function step(){
+    if(exIdx>=sess.items.length){resultsScreen();return;}
+    const it=sess.items[exIdx];
+    mBody.innerHTML='<div style="font-family:Space Mono,monospace;font-size:11px;color:var(--ink-faint);margin-bottom:8px">'+sess.focus+' · упр. '+(exIdx+1)+'/'+sess.items.length+'</div>'+
+      '<div class="exstep"><div class="en">'+it.name+'</div><div style="font-family:Space Mono,monospace;color:var(--ink-dim);margin-top:6px">Подход '+(setIdx+1)+' / '+it.sets+'</div>'+
+      '<div class="ebig">'+it.reps+'</div><div class="ed">'+it.note+'</div></div>'+
+      '<button class="btn go" style="margin-top:14px" id="setDone">✓ Подход сделан'+(it.rest>0?' → отдых':'')+'</button>';
+    document.getElementById('setDone').onclick=()=>{
+      const wasLastSet=setIdx>=it.sets-1,wasLastEx=exIdx>=sess.items.length-1,rest=it.rest>0?restFor(it,exIdx,setIdx):0;
+      if(!wasLastSet)setIdx++;else{exIdx++;setIdx=0;}
+      if(wasLastSet&&wasLastEx){resultsScreen();return;}
+      if(rest>0)restScreen(rest);else step();};
+  }
+  function restScreen(sec){let left=sec;
+    mBody.innerHTML='<div style="text-align:center;color:var(--ink-dim);margin-bottom:6px">Отдых</div><div class="stage" style="flex:none;padding:34px 0"><div class="restbig" id="restN">'+left+'</div></div><div style="text-align:center;color:var(--ink-faint);font-size:12px;margin:10px 0">следующий подход начнётся сам</div><button class="btn ghost" id="skipRest">Пропустить отдых</button>';
+    restIv=setInterval(()=>{left--;const el=document.getElementById('restN');if(left<=0){clearInterval(restIv);beep();step();}else if(el)el.textContent=left;},1000);
+    document.getElementById('skipRest').onclick=()=>{clearInterval(restIv);step();};}
+  function resultsScreen(){let diff=0;
+    let html='<div style="font-family:Unbounded,sans-serif;font-weight:700;font-size:18px;margin-bottom:4px">Итоги</div><div style="color:var(--ink-dim);font-size:12px;margin-bottom:12px">Сколько реально осилил (можно оставить как есть):</div>';
+    sess.items.forEach((it,i)=>{html+='<div class="brow" style="margin-bottom:8px"><span style="font-size:13px;flex:1">'+it.name+'</span><input class="binput" id="res'+i+'" placeholder="'+it.reps+'"></div>';});
+    html+='<div style="margin:14px 0 4px;font-size:13px">Насколько было тяжело? (1-10)</div><div class="diffrow" id="diffRow"></div><button class="btn go" id="saveWk" style="margin-top:8px">СОХРАНИТЬ ТРЕНИРОВКУ</button>';
+    mBody.innerHTML=html;
+    const dr=document.getElementById('diffRow');for(let n=1;n<=10;n++){const x=document.createElement('div');x.className='diffbtn';x.textContent=n;x.onclick=()=>{diff=n;dr.querySelectorAll('.diffbtn').forEach(y=>y.classList.remove('on'));x.classList.add('on');};dr.appendChild(x);}
+    document.getElementById('saveWk').onclick=()=>{
+      sess.items.forEach((it,i)=>{const v=document.getElementById('res'+i).value.trim();results[i].actual=v||(''+it.reps);});
+      if(!S.body.start)S.body.start=Date.now();
+      S.body.log[localDate()]={session:letter,week:bWeek(),items:results,diff:diff||null};
+      S.body.rotation=(S.body.rotation+1)%3;save();closeModal();renderBody();toast('💪 Тренировка сохранена');};
+  }
+  step();activeCleanup=()=>{if(restIv)clearInterval(restIv);};
+}
+function openDB(){return new Promise((res,rej)=>{try{const r=indexedDB.open('detoxBody',1);r.onupgradeneeded=()=>{r.result.createObjectStore('photos');};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}});}
+async function dbPut(id,blob){const db=await openDB();return new Promise((res,rej)=>{const t=db.transaction('photos','readwrite');t.objectStore('photos').put(blob,id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
+async function dbGet(id){const db=await openDB();return new Promise(res=>{const t=db.transaction('photos','readonly');const q=t.objectStore('photos').get(id);q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);});}
+function downscale(file,maxd,q){return new Promise(res=>{const img=new Image();img.onload=()=>{const sc=Math.min(1,maxd/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(b=>res(b),'image/jpeg',q);};img.onerror=()=>res(null);img.src=URL.createObjectURL(file);});}
+async function addPhoto(file){try{const blob=await downscale(file,640,0.6);if(!blob){toast('Не удалось обработать фото');return;}const id='p'+Date.now();await dbPut(id,blob);S.body.photos.push({id,date:localDate()});S.body.lastPhoto=localDate();save();renderBody();toast('📸 Фото добавлено');}catch(e){toast('Не удалось сохранить фото');}}
+async function renderPhotos(){const strip=document.getElementById('photoStrip');if(!strip)return;if(!S.body.photos.length){strip.innerHTML='<div style="color:var(--ink-faint);font-size:12px">Пока нет фото. Сделай стартовое — точка отсчёта.</div>';return;}strip.innerHTML='';for(const p of S.body.photos){const div=document.createElement('div');div.className='pi';const im=document.createElement('img');div.appendChild(im);const dd=document.createElement('div');dd.className='pd';dd.textContent=p.date.slice(5);div.appendChild(dd);strip.appendChild(div);try{const blob=await dbGet(p.id);if(blob)im.src=URL.createObjectURL(blob);}catch(e){}}}
+/* ===================== /BODY ===================== */
+
+document.querySelectorAll('.navbtn').forEach(b=>{b.onclick=()=>{
+  document.querySelectorAll('.navbtn').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  b.classList.add('active');document.getElementById('v-'+b.dataset.v).classList.add('active');
+  if(b.dataset.v==='program')renderToday();if(b.dataset.v==='progress')renderProgress();if(b.dataset.v==='body')renderBody();
+};});
+
+(async function boot(){
+  try{await load();}catch(e){}
+  if(!S.start)S.start=Date.now();
+  if(!S.seenUnlocks)S.seenUnlocks=[];
+  EXERCISES.forEach(x=>{ if((x.lock||0)>0 && S.level>=x.lock && !S.seenUnlocks.includes(x.id)) S.seenUnlocks.push(x.id); });
+  const fails=reconcile();
+  document.getElementById('appVer').textContent=APP_VERSION;
+  renderToday();renderTrain();renderProgress();renderBody();
+  await save();
+  if(fails>0)showOver('bad','−'+fails+' '+(fails===1?'УРОВЕНЬ':'УРОВНЯ'),ROAST[Math.floor(Math.random()*ROAST.length)]);
+  if('serviceWorker'in navigator){try{navigator.serviceWorker.register('sw.js');}catch(e){}}
+})();
+</script>
+</body>
+</html>
