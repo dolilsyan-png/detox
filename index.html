@@ -822,7 +822,8 @@ function exMaze(){
   function blocked(x,y){const xi=x|0,yi=y|0;if(xi<0||yi<0||xi>=size||yi>=size)return true;return occ[yi*size+xi]===1;}
   function setup(){sizeCanvas();genMaze(sizeFor(level));
     wallT=Math.max(2,Math.round(size/C*0.12));cellPx=Math.floor((size-wallT)/C);off=Math.round((size-(cellPx*C+wallT))/2);half=Math.max(3,Math.floor(cellPx*0.15));
-    buildWalls();buildOcc();respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
+    buildWalls();buildOcc();respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);
+    half=Math.max(4,Math.floor(cellPx*0.28));}
   function cellCenter(cx,cy){return [off+cx*cellPx+(cellPx+wallT)/2, off+cy*cellPx+(cellPx+wallT)/2];}
   function respawn(){const c=cellCenter(startc.x,startc.y);px=c[0];py=c[1];vx=vy=0;}
   function hitWall(x,y){const l=x-half,r=x+half,t=y-half,b=y+half;for(const w of walls){if(r>w[0]&&l<w[0]+w[2]&&b>w[1]&&t<w[1]+w[3])return true;}return false;}
@@ -834,7 +835,7 @@ function exMaze(){
     const g=cellCenter(goalc.x,goalc.y);
     if(Math.abs(px-g[0])<cellPx*0.4&&Math.abs(py-g[1])<cellPx*0.4){win();return;}
     draw();raf=requestAnimationFrame(loop);}
-  // smooth facing direction — lerps toward velocity vector
+  // smooth facing direction
   let faceAng=0;
   function draw(){
     // update facing: lerp toward velocity if moving
@@ -842,9 +843,12 @@ function exMaze(){
     if(spd>0.15){const targetAng=Math.atan2(vy,vx);
       let da=targetAng-faceAng;while(da>Math.PI)da-=Math.PI*2;while(da<-Math.PI)da+=Math.PI*2;
       faceAng+=da*0.18;}
-    // 1. dark floor
+
+    const beamLen=cellPx*1.6; // half of original 3.2
+    const halfAngle=Math.PI/4; // 90° cone
+
+    // 1. draw full lit scene onto main canvas
     ctx.fillStyle='#0a0e0a';ctx.fillRect(0,0,size,size);
-    // 2. draw all walls cleanly — simple stroked lines, no clip
     ctx.strokeStyle='#19d3e6';ctx.lineWidth=wallT;ctx.lineCap='square';ctx.lineJoin='miter';
     ctx.beginPath();
     for(let wy=0;wy<C;wy++)for(let wx=0;wx<C;wx++){const c=cells[wy*C+wx];
@@ -854,28 +858,32 @@ function exMaze(){
       if(wx===C-1&&c.e){ctx.moveTo(ex,oy);ctx.lineTo(ex,ey);}
       if(wy===C-1&&c.s){ctx.moveTo(ox,ey);ctx.lineTo(ex,ey);}}
     ctx.stroke();
-    // 3. goal
     const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;
     ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
-    // 4. flashlight cone from player center in facing direction
-    const beamLen=cellPx*3.2,halfAngle=Math.PI/4; // 90° cone
-    const tx=px+Math.cos(faceAng)*beamLen,ty=py+Math.sin(faceAng)*beamLen;
-    const lx=px+Math.cos(faceAng-halfAngle)*beamLen,ly=py+Math.sin(faceAng-halfAngle)*beamLen;
-    const rx=px+Math.cos(faceAng+halfAngle)*beamLen,ry=py+Math.sin(faceAng+halfAngle)*beamLen;
-    // cone gradient — bright at origin, fades to transparent
-    const grd=ctx.createRadialGradient(px,py,0,px,py,beamLen);
-    grd.addColorStop(0,'rgba(220,255,200,0.22)');
-    grd.addColorStop(0.5,'rgba(180,255,160,0.10)');
-    grd.addColorStop(1,'rgba(0,0,0,0)');
+
+    // 2. overlay: black everywhere, cut out the cone with destination-out
+    // build cone path
+    const angL=faceAng-halfAngle,angR=faceAng+halfAngle;
     ctx.save();
-    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(lx,ly);ctx.arcTo(tx,ty,rx,ry,beamLen*Math.tan(halfAngle));ctx.lineTo(rx,ry);ctx.closePath();
-    ctx.fillStyle=grd;ctx.fill();
+    // fill entire canvas black
+    ctx.fillStyle='rgba(0,0,0,1)';ctx.fillRect(0,0,size,size);
+    // cut cone hole using destination-out
+    ctx.globalCompositeOperation='destination-out';
+    const grd=ctx.createRadialGradient(px,py,0,px,py,beamLen);
+    grd.addColorStop(0,'rgba(0,0,0,1)');
+    grd.addColorStop(0.75,'rgba(0,0,0,0.9)');
+    grd.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grd;
+    ctx.beginPath();ctx.moveTo(px,py);
+    ctx.arc(px,py,beamLen,angL,angR);
+    ctx.closePath();ctx.fill();
     ctx.restore();
-    // 5. player square with direction indicator
+
+    // 3. player always visible
     ctx.fillStyle='#c6f432';ctx.fillRect(px-half,py-half,half*2,half*2);
-    // front dot shows direction
-    const fdx=Math.cos(faceAng)*half*0.85,fdy=Math.sin(faceAng)*half*0.85;
-    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(px+fdx,py+fdy,half*0.3,0,Math.PI*2);ctx.fill();}
+    // front dot
+    const fdx=Math.cos(faceAng)*half*0.8,fdy=Math.sin(faceAng)*half*0.8;
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(px+fdx,py+fdy,half*0.28,0,Math.PI*2);ctx.fill();}
   function win(){beep();if((S.best.maze||0)<Math.min(level,MAXLVL)){S.best.maze=Math.min(level,MAXLVL);document.getElementById('mzBest').textContent=S.best.maze;}markTrained();save();
     if(level>=MAXLVL){showOver('good','🏁 30/30','Все тридцать уровней пройдены. Лабиринты тебе больше не страшны. Дальше — просто для удовольствия.');setup();raf=requestAnimationFrame(loop);return;}
     level++;setup();raf=requestAnimationFrame(loop);}
