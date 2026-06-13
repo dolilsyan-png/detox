@@ -822,8 +822,9 @@ function exMaze(){
   function blocked(x,y){const xi=x|0,yi=y|0;if(xi<0||yi<0||xi>=size||yi>=size)return true;return occ[yi*size+xi]===1;}
   function setup(){sizeCanvas();genMaze(sizeFor(level));
     wallT=Math.max(2,Math.round(size/C*0.12));cellPx=Math.floor((size-wallT)/C);off=Math.round((size-(cellPx*C+wallT))/2);half=Math.max(3,Math.floor(cellPx*0.15));
-    buildWalls();buildOcc();respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);
-    half=Math.max(4,Math.floor(cellPx*0.28));}
+    buildWalls();buildOcc();
+    half=Math.max(4,Math.floor(cellPx*0.42));
+    respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
   function cellCenter(cx,cy){return [off+cx*cellPx+(cellPx+wallT)/2, off+cy*cellPx+(cellPx+wallT)/2];}
   function respawn(){const c=cellCenter(startc.x,startc.y);px=c[0];py=c[1];vx=vy=0;}
   function hitWall(x,y){const l=x-half,r=x+half,t=y-half,b=y+half;for(const w of walls){if(r>w[0]&&l<w[0]+w[2]&&b>w[1]&&t<w[1]+w[3])return true;}return false;}
@@ -862,16 +863,20 @@ function exMaze(){
     const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;
     ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
 
-    // 2. build fog on separate canvas: start fully black, cut cone with destination-out
+    // 2. build fog on separate canvas: fully black, cut sharp cone out
     ensureFog();
     fogCX.clearRect(0,0,size,size);
     fogCX.fillStyle='#000';fogCX.fillRect(0,0,size,size);
-    // cut cone hole
     fogCX.globalCompositeOperation='destination-out';
-    const grd=fogCX.createRadialGradient(px,py,0,px,py,beamLen);
-    grd.addColorStop(0,'rgba(0,0,0,1)');
-    grd.addColorStop(0.8,'rgba(0,0,0,0.85)');
-    grd.addColorStop(1,'rgba(0,0,0,0)');
+    // sharp solid cone — fully transparent inside
+    fogCX.fillStyle='rgba(0,0,0,1)';
+    fogCX.beginPath();fogCX.moveTo(px,py);
+    fogCX.arc(px,py,beamLen,angL,angR);
+    fogCX.closePath();fogCX.fill();
+    // soft fade at the far edge only
+    const grd=fogCX.createRadialGradient(px,py,beamLen*0.75,px,py,beamLen);
+    grd.addColorStop(0,'rgba(0,0,0,0)');
+    grd.addColorStop(1,'rgba(0,0,0,1)');
     fogCX.fillStyle=grd;
     fogCX.beginPath();fogCX.moveTo(px,py);
     fogCX.arc(px,py,beamLen,angL,angR);
