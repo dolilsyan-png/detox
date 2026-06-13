@@ -835,19 +835,20 @@ function exMaze(){
     const g=cellCenter(goalc.x,goalc.y);
     if(Math.abs(px-g[0])<cellPx*0.4&&Math.abs(py-g[1])<cellPx*0.4){win();return;}
     draw();raf=requestAnimationFrame(loop);}
+  // offscreen fog canvas — reused each frame
+  let fogCV=null,fogCX=null;
+  function ensureFog(){if(fogCV&&fogCV.width===size)return;fogCV=document.createElement('canvas');fogCV.width=size;fogCV.height=size;fogCX=fogCV.getContext('2d');}
   // smooth facing direction
   let faceAng=0;
   function draw(){
-    // update facing: lerp toward velocity if moving
     const spd=Math.hypot(vx,vy);
     if(spd>0.15){const targetAng=Math.atan2(vy,vx);
       let da=targetAng-faceAng;while(da>Math.PI)da-=Math.PI*2;while(da<-Math.PI)da+=Math.PI*2;
       faceAng+=da*0.18;}
+    const beamLen=cellPx*1.6,halfAngle=Math.PI/4;
+    const angL=faceAng-halfAngle,angR=faceAng+halfAngle;
 
-    const beamLen=cellPx*1.6; // half of original 3.2
-    const halfAngle=Math.PI/4; // 90° cone
-
-    // 1. draw full lit scene onto main canvas
+    // 1. draw scene on main canvas
     ctx.fillStyle='#0a0e0a';ctx.fillRect(0,0,size,size);
     ctx.strokeStyle='#19d3e6';ctx.lineWidth=wallT;ctx.lineCap='square';ctx.lineJoin='miter';
     ctx.beginPath();
@@ -861,27 +862,27 @@ function exMaze(){
     const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;
     ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
 
-    // 2. overlay: black everywhere, cut out the cone with destination-out
-    // build cone path
-    const angL=faceAng-halfAngle,angR=faceAng+halfAngle;
-    ctx.save();
-    // fill entire canvas black
-    ctx.fillStyle='rgba(0,0,0,1)';ctx.fillRect(0,0,size,size);
-    // cut cone hole using destination-out
-    ctx.globalCompositeOperation='destination-out';
-    const grd=ctx.createRadialGradient(px,py,0,px,py,beamLen);
+    // 2. build fog on separate canvas: start fully black, cut cone with destination-out
+    ensureFog();
+    fogCX.clearRect(0,0,size,size);
+    fogCX.fillStyle='#000';fogCX.fillRect(0,0,size,size);
+    // cut cone hole
+    fogCX.globalCompositeOperation='destination-out';
+    const grd=fogCX.createRadialGradient(px,py,0,px,py,beamLen);
     grd.addColorStop(0,'rgba(0,0,0,1)');
-    grd.addColorStop(0.75,'rgba(0,0,0,0.9)');
+    grd.addColorStop(0.8,'rgba(0,0,0,0.85)');
     grd.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=grd;
-    ctx.beginPath();ctx.moveTo(px,py);
-    ctx.arc(px,py,beamLen,angL,angR);
-    ctx.closePath();ctx.fill();
-    ctx.restore();
+    fogCX.fillStyle=grd;
+    fogCX.beginPath();fogCX.moveTo(px,py);
+    fogCX.arc(px,py,beamLen,angL,angR);
+    fogCX.closePath();fogCX.fill();
+    fogCX.globalCompositeOperation='source-over';
 
-    // 3. player always visible
+    // 3. paste fog over scene
+    ctx.drawImage(fogCV,0,0);
+
+    // 4. player always on top
     ctx.fillStyle='#c6f432';ctx.fillRect(px-half,py-half,half*2,half*2);
-    // front dot
     const fdx=Math.cos(faceAng)*half*0.8,fdy=Math.sin(faceAng)*half*0.8;
     ctx.fillStyle='#000';ctx.beginPath();ctx.arc(px+fdx,py+fdy,half*0.28,0,Math.PI*2);ctx.fill();}
   function win(){beep();if((S.best.maze||0)<Math.min(level,MAXLVL)){S.best.maze=Math.min(level,MAXLVL);document.getElementById('mzBest').textContent=S.best.maze;}markTrained();save();
