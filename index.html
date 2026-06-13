@@ -69,7 +69,7 @@
   .xcard h4{font-family:'Unbounded',sans-serif;font-weight:700;font-size:14px;margin-top:9px}
   .xcard p{font-size:11px;color:var(--ink-dim);margin-top:3px;line-height:1.35}
   /* MODAL */
-  .modal{position:fixed;inset:0;z-index:200;background:rgba(6,8,6,.97);display:none;flex-direction:column;padding:18px;padding-top:calc(18px + env(safe-area-inset-top,0px))}
+  .modal{position:fixed;inset:0;z-index:200;background:rgba(6,8,6,.97);display:none;flex-direction:column;padding:18px;padding-top:calc(18px + env(safe-area-inset-top,0px));overscroll-behavior:contain}
   .modal.open{display:flex;animation:fade .25s}
   .mtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
   .mtitle{font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px}
@@ -834,35 +834,41 @@ function exMaze(){
     const g=cellCenter(goalc.x,goalc.y);
     if(Math.abs(px-g[0])<cellPx*0.4&&Math.abs(py-g[1])<cellPx*0.4){win();return;}
     draw();raf=requestAnimationFrame(loop);}
-  function draw(){ctx.fillStyle='#000';ctx.fillRect(0,0,size,size);
-    // build visibility polygon first
-    const R=cellPx*2.2,rays=180,step=Math.max(1.5,R/36);const poly=[];
+  function draw(){
+    // 1. black background
+    ctx.fillStyle='#000';ctx.fillRect(0,0,size,size);
+    // 2. build visibility polygon
+    const R=cellPx*2.2,rays=200,step=Math.max(1,R/40);const poly=[];
     for(let i=0;i<rays;i++){const ang=i/rays*Math.PI*2,dx=Math.cos(ang),dy=Math.sin(ang);let dist=0,hx=px,hy=py;
       while(dist<R){dist+=step;const nx=px+dx*dist,ny=py+dy*dist;if(blocked(nx,ny))break;hx=nx;hy=ny;}poly.push([hx,hy]);}
-    // clip to visibility polygon and draw everything inside it
+    // 3. floor — only inside visibility (clip, fill, restore)
     ctx.save();
     ctx.beginPath();ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();ctx.clip();
-    // floor
     ctx.fillStyle='#0d1a0d';ctx.fillRect(0,0,size,size);
-    // walls — stroked lines, drawn inside clip so no artifacts outside vision
+    // radial fade inside clip
+    const grd=ctx.createRadialGradient(px,py,R*0.45,px,py,R);
+    grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,0.88)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,size,size);
+    ctx.restore();
+    // 4. fog — black everywhere OUTSIDE visibility polygon (evenodd, no clip)
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.rect(0,0,size,size);
+    ctx.moveTo(poly[0][0],poly[0][1]);for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);ctx.closePath();
+    ctx.fill('evenodd');
+    // 5. walls — drawn WITHOUT clip so lines are never cut by polygon edge
     ctx.strokeStyle='#19d3e6';ctx.lineWidth=wallT;ctx.lineCap='square';ctx.lineJoin='miter';
     ctx.beginPath();
-    for(let y=0;y<C;y++)for(let x=0;x<C;x++){const c=cells[y*C+x];
-      const ox=off+x*cellPx,oy=off+y*cellPx,ex=ox+cellPx,ey=oy+cellPx;
+    for(let wy=0;wy<C;wy++)for(let wx=0;wx<C;wx++){const c=cells[wy*C+wx];
+      const ox=off+wx*cellPx,oy=off+wy*cellPx,ex=ox+cellPx,ey=oy+cellPx;
       if(c.n){ctx.moveTo(ox,oy);ctx.lineTo(ex,oy);}
       if(c.w){ctx.moveTo(ox,oy);ctx.lineTo(ox,ey);}
-      if(x===C-1&&c.e){ctx.moveTo(ex,oy);ctx.lineTo(ex,ey);}
-      if(y===C-1&&c.s){ctx.moveTo(ox,ey);ctx.lineTo(ex,ey);}}
+      if(wx===C-1&&c.e){ctx.moveTo(ex,oy);ctx.lineTo(ex,ey);}
+      if(wy===C-1&&c.s){ctx.moveTo(ox,ey);ctx.lineTo(ex,ey);}}
     ctx.stroke();
-    // goal and player
+    // 6. goal and player on top
     const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;
     ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
-    ctx.fillStyle='#c6f432';ctx.fillRect(px-half,py-half,half*2,half*2);
-    // radial fade at vision edge
-    const grd=ctx.createRadialGradient(px,py,R*0.45,px,py,R);
-    grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,0.9)');
-    ctx.fillStyle=grd;ctx.fillRect(0,0,size,size);
-    ctx.restore();}
+    ctx.fillStyle='#c6f432';ctx.fillRect(px-half,py-half,half*2,half*2);}
   function win(){beep();if((S.best.maze||0)<Math.min(level,MAXLVL)){S.best.maze=Math.min(level,MAXLVL);document.getElementById('mzBest').textContent=S.best.maze;}markTrained();save();
     if(level>=MAXLVL){showOver('good','🏁 30/30','Все тридцать уровней пройдены. Лабиринты тебе больше не страшны. Дальше — просто для удовольствия.');setup();raf=requestAnimationFrame(loop);return;}
     level++;setup();raf=requestAnimationFrame(loop);}
@@ -912,7 +918,7 @@ function exTruth(){
 function exTunnel(){
   mBody.innerHTML='<p class="mhint">Прижми палец к точке и удерживай, пока она медленно ползёт. Отпустил или сильно отстал — счёт сбрасывается. Держи как можно дольше.</p>'+
     '<div class="readout"><div><b id="uNow">0.0</b>держишь</div><div><b id="uBest">'+(S.best.tunnel?S.best.tunnel.toFixed(1):'—')+'</b>рекорд</div></div>'+
-    '<div class="stage" id="uStage"><div id="tunnelDot"></div></div>';
+    '<div class="stage" id="uStage" style="touch-action:none;user-select:none"><div id="tunnelDot"></div></div>';
   const stage=document.getElementById('uStage'),dot=document.getElementById('tunnelDot');
   const R=50;
   let x=80,y=80,tx=80,ty=80,raf,holding=false,holdStart=0,now=0,ended=false,lpx=0,lpy=0,haveP=false;
