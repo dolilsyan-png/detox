@@ -827,34 +827,47 @@ function exMaze(){
     respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
   function cellCenter(cx,cy){return [off+cx*cellPx+(cellPx+wallT)/2, off+cy*cellPx+(cellPx+wallT)/2];}
   function respawn(){const c=cellCenter(startc.x,startc.y);px=c[0];py=c[1];vx=vy=0;}
-  // cell coords from pixel pos
-  function cellOf(x,y){return{cx:Math.floor((x-off)/cellPx),cy:Math.floor((y-off)/cellPx)};}
-  function inBounds(cx,cy){return cx>=0&&cy>=0&&cx<C&&cy<C;}
-  // wall between cell (cx,cy) and neighbour in direction: pixel boundary position and axis
-  // returns true if pixel point x,y is inside any wall rectangle (built with wallT thickness, centered on cell boundary)
-  function hitWall(x,y){
-    const h=half;
-    // test all 4 corners + 4 edge midpoints of player square
-    const pts=[[x-h,y-h],[x+h,y-h],[x-h,y+h],[x+h,y+h],[x,y-h],[x,y+h],[x-h,y],[x+h,y]];
-    for(const[px2,py2] of pts){
-      // out of maze area
-      if(px2<off||py2<off||px2>off+C*cellPx+wallT||py2>off+C*cellPx+wallT)return true;
-      const cx=Math.floor((px2-off)/cellPx),cy=Math.floor((py2-off)/cellPx);
-      // position within cell (0..1)
-      const lx=(px2-off)/cellPx-cx,ly=(py2-off)/cellPx-cy;
-      const wf=wallT/cellPx; // wall fraction
-      if(!inBounds(cx,cy))return true;
-      const cell=cells[cy*C+cx];
-      // near north wall
-      if(ly<wf&&cell.n)return true;
-      // near south wall
-      if(ly>1-wf&&(cy+1>=C||(inBounds(cx,cy+1)&&cells[(cy+1)*C+cx].n)))return true;
-      // near west wall
-      if(lx<wf&&cell.w)return true;
-      // near east wall
-      if(lx>1-wf&&(cx+1>=C||(inBounds(cx+1,cy)&&cells[cy*C+cx+1].w)))return true;
+  // pixel → cell index (clamped)
+  function pxToCell(v,o){return Math.floor((v-o)/cellPx);}
+  // does a pixel point touch a drawn wall?
+  // walls are stroked lines centered on cell boundaries; half-thickness = wallT/2
+  function ptHitsWall(px2,py2){
+    const hw=wallT/2+0.5; // half wall thickness + tiny margin
+    // out of canvas
+    if(px2<0||py2<0||px2>=size||py2>=size)return true;
+    // check every cell boundary near this point
+    // horizontal boundaries (between rows)
+    for(let row=0;row<=C;row++){
+      const wy=off+row*cellPx; // pixel y of boundary
+      if(Math.abs(py2-wy)<=hw){
+        // which cell column are we in?
+        const cx=pxToCell(px2,off);
+        if(cx<0||cx>=C)return true;
+        // is there a wall here?
+        if(row===0){if(cells[0*C+cx].n)return true;}
+        else if(row===C){if(cells[(C-1)*C+cx].s)return true;}
+        else{if(cells[(row-1)*C+cx].s||cells[row*C+cx].n)return true;}
+      }
+    }
+    // vertical boundaries (between columns)
+    for(let col=0;col<=C;col++){
+      const wx=off+col*cellPx;
+      if(Math.abs(px2-wx)<=hw){
+        const cy=pxToCell(py2,off);
+        if(cy<0||cy>=C)return true;
+        if(col===0){if(cells[cy*C+0].w)return true;}
+        else if(col===C){if(cells[cy*C+(C-1)].e)return true;}
+        else{if(cells[cy*C+col-1].e||cells[cy*C+col].w)return true;}
+      }
     }
     return false;
+  }
+  function hitWall(x,y){
+    const h=half;
+    return ptHitsWall(x-h,y-h)||ptHitsWall(x+h,y-h)||
+           ptHitsWall(x-h,y+h)||ptHitsWall(x+h,y+h)||
+           ptHitsWall(x,y-h)  ||ptHitsWall(x,y+h)  ||
+           ptHitsWall(x-h,y)  ||ptHitsWall(x+h,y);
   }
   function loop(){if(ended)return;
     vx=(vx+jx*ACC)*FR;vy=(vy+jy*ACC)*FR;
