@@ -768,187 +768,191 @@ function exFlow(){
   activeCleanup=()=>{ended=true;phase='over';cancelAnimationFrame(raf);};
 }
 
-/* MAZE — 30 уровней, плавная сложность, чистые тонкие стены, джойстик под пальцем */
+/* MAZE — большой лабиринт, стрелки, рандомный выход */
 function exMaze(){
+  // grid size: grows with level, huge
   const MAXLVL=30;
-  mBody.innerHTML='<p class="mhint">Проведи квадрат к красному выходу. Коснись поля в любом месте — там появится джойстик. Квадрат скользит по инерции. Коснулся стены — назад на старт.</p>'+
-    '<div class="readout"><div><b id="mzLvl">1</b>/ '+MAXLVL+'</div><div><b id="mzDeath">0</b>врезался</div><div><b id="mzBest">'+(S.best.maze||0)+'</b>рекорд</div></div>'+
-    '<div id="mzStage"><canvas id="mzCanvas"></canvas><div class="joy" id="mzJoy"><div class="knob" id="mzKnob"></div></div></div>';
+  const C=25; // fixed 25×25 — огромный
+  // virtual grid: each cell is CELL px, wall is WALL px
+  const CELL=28,WALL=2,TOTAL=C*CELL+WALL;
+  // canvas is a viewport — smaller than the full maze
+  let cells=null,goalc=null;
+  let px=0,py=0; // player position in maze-pixels
+  let deaths=0,level=1,raf,ended=false;
+  let keys={};
+
+  mBody.innerHTML=
+    '<p class="mhint" style="font-size:11px">Стрелки — движение. Найди красный выход. Коснулся стены — старт.</p>'+
+    '<div class="readout"><div><b id="mzLvl">1</b>/'+MAXLVL+'</div><div><b id="mzDeath">0</b>врезался</div><div><b id="mzBest">'+(S.best.maze||0)+'</b>рекорд</div></div>'+
+    '<div id="mzStage" style="touch-action:none"><canvas id="mzCanvas" style="display:block;border-radius:12px"></canvas></div>';
+
   const stage=document.getElementById('mzStage'),cv=document.getElementById('mzCanvas'),ctx=cv.getContext('2d');
-  const joy=document.getElementById('mzJoy'),knob=document.getElementById('mzKnob');
-  let level=1,deaths=0,raf,ended=false;
-  let size=0,C=0,cellPx=0,wallT=0,off=0,half=0,cells=null,walls=[],px=0,py=0,vx=0,vy=0,goalc=null,startc=null;
-  let jx=0,jy=0;const ACC=0.42,FR=0.92,maxR=72,dead=16;
-  function sizeCanvas(){size=Math.floor(Math.min(stage.clientWidth,stage.clientHeight));cv.width=size;cv.height=size;}
-  function carveDFS(c){
-    const cs=new Array(c*c);for(let i=0;i<c*c;i++)cs[i]={n:true,e:true,s:true,w:true};
-    const vis=new Uint8Array(c*c);const stack=[[0,0]];vis[0]=1;
-    const dirs=[['n',0,-1],['e',1,0],['s',0,1],['w',-1,0]];const opp={n:'s',e:'w',s:'n',w:'e'};const idx=(x,y)=>y*c+x;
-    while(stack.length){const t=stack[stack.length-1],x=t[0],y=t[1];const opts=[];
-      for(const[d,dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<c&&ny<c&&!vis[idx(nx,ny)])opts.push([d,dx,dy]);}
-      if(!opts.length){stack.pop();continue;}
-      const[d,dx,dy]=opts[Math.floor(Math.random()*opts.length)];const nx=x+dx,ny=y+dy;
-      cs[idx(x,y)][d]=false;cs[idx(nx,ny)][opp[d]]=false;vis[idx(nx,ny)]=1;stack.push([nx,ny]);}
+
+  // size canvas to stage
+  function sizeCV(){
+    const s=Math.floor(Math.min(stage.clientWidth,stage.clientHeight));
+    cv.width=s;cv.height=s;
+  }
+  sizeCV();
+
+  // DFS maze carver
+  function carveDFS(){
+    const cs=Array.from({length:C*C},()=>({n:true,e:true,s:true,w:true}));
+    const vis=new Uint8Array(C*C);const idx=(x,y)=>y*C+x;
+    const dirs=[['n',0,-1],['e',1,0],['s',0,1],['w',-1,0]];
+    const opp={n:'s',e:'w',s:'n',w:'e'};
+    const stack=[[0,0]];vis[0]=1;
+    while(stack.length){
+      const[x,y]=stack[stack.length-1];
+      const nb=dirs.filter(([,dx,dy])=>{const nx=x+dx,ny=y+dy;return nx>=0&&ny>=0&&nx<C&&ny<C&&!vis[idx(nx,ny)];});
+      if(!nb.length){stack.pop();continue;}
+      const[d,dx,dy]=nb[Math.floor(Math.random()*nb.length)];
+      const nx=x+dx,ny=y+dy;
+      cs[idx(x,y)][d]=false;cs[idx(nx,ny)][opp[d]]=false;vis[idx(nx,ny)]=1;stack.push([nx,ny]);
+    }
     return cs;
   }
-  function solTurns(cs,c){
-    const idx=(x,y)=>y*c+x;const prev=new Int32Array(c*c).fill(-1);const q=[0];prev[0]=0;const goal=c*c-1;
-    const dirs=[['n',0,-1],['e',1,0],['s',0,1],['w',-1,0]];
-    while(q.length){const cur=q.shift();if(cur===goal)break;const cx=cur%c,cy=(cur/c)|0;
-      for(const[d,dx,dy]of dirs){if(!cs[cur][d]){const nx=cx+dx,ny=cy+dy;if(nx>=0&&ny>=0&&nx<c&&ny<c){const ni=idx(nx,ny);if(prev[ni]===-1){prev[ni]=cur;q.push(ni);}}}}}
-    if(prev[goal]===-1)return 0;const path=[];let cc=goal;while(cc!==0){path.push(cc);cc=prev[cc];}path.push(0);
-    let turns=0;for(let i=2;i<path.length;i++){const a=path[i-2],b=path[i-1],e=path[i];
-      const d1x=(b%c)-(a%c),d1y=((b/c)|0)-((a/c)|0),d2x=(e%c)-(b%c),d2y=((e/c)|0)-((b/c)|0);if(d1x!==d2x||d1y!==d2y)turns++;}
-    return turns;
-  }
-  function sizeFor(l){return Math.min(13,5+Math.round(l/3.5));}
-  function targetFor(l){return Math.round(5+l*1.5);}
-  function genMaze(c){
-    C=c;const target=targetFor(level);let best=null,bestSc=Infinity;const K=18;
-    for(let k=0;k<K;k++){const cs=carveDFS(c);const t=solTurns(cs,c);const s=Math.abs(t-target);if(s<bestSc){bestSc=s;best=cs;}}
-    cells=best;startc={x:0,y:0};goalc={x:C-1,y:C-1};
-  }
-  function buildWalls(){walls=[];const T=wallT;
-    for(let y=0;y<C;y++)for(let x=0;x<C;x++){const c=cells[y*C+x],ox=off+x*cellPx,oy=off+y*cellPx;
-      if(c.n)walls.push([ox,oy,cellPx+T,T]);
-      if(c.w)walls.push([ox,oy,T,cellPx+T]);
-      if(x===C-1&&c.e)walls.push([ox+cellPx,oy,T,cellPx+T]);
-      if(y===C-1&&c.s)walls.push([ox,oy+cellPx,cellPx+T,T]);}
-  }
-  let occ=null;
-  function buildOcc(){occ=new Uint8Array(size*size);
-    for(const w of walls){const x0=Math.max(0,Math.floor(w[0])),y0=Math.max(0,Math.floor(w[1])),x1=Math.min(size,Math.ceil(w[0]+w[2])),y1=Math.min(size,Math.ceil(w[1]+w[3]));
-      for(let yy=y0;yy<y1;yy++){const b=yy*size;for(let xx=x0;xx<x1;xx++)occ[b+xx]=1;}}}
-  function blocked(x,y){const xi=x|0,yi=y|0;if(xi<0||yi<0||xi>=size||yi>=size)return true;return occ[yi*size+xi]===1;}
-  function setup(){sizeCanvas();genMaze(sizeFor(level));
-    wallT=Math.max(2,Math.round(size/C*0.12));cellPx=Math.floor((size-wallT)/C);off=Math.round((size-(cellPx*C+wallT))/2);half=Math.max(3,Math.floor(cellPx*0.15));
-    buildWalls();buildOcc();
-    half=Math.max(3,Math.floor(cellPx*0.18));
-    respawn();document.getElementById('mzLvl').textContent=Math.min(level,MAXLVL);}
-  function cellCenter(cx,cy){return [off+cx*cellPx+(cellPx+wallT)/2, off+cy*cellPx+(cellPx+wallT)/2];}
-  function respawn(){const c=cellCenter(startc.x,startc.y);px=c[0];py=c[1];vx=vy=0;}
-  // pixel → cell index (clamped)
-  function pxToCell(v,o){return Math.floor((v-o)/cellPx);}
-  // does a pixel point touch a drawn wall?
-  // walls are stroked lines centered on cell boundaries; half-thickness = wallT/2
-  function ptHitsWall(px2,py2){
-    const hw=wallT/2+0.5; // half wall thickness + tiny margin
-    // out of canvas
-    if(px2<0||py2<0||px2>=size||py2>=size)return true;
-    // check every cell boundary near this point
-    // horizontal boundaries (between rows)
-    for(let row=0;row<=C;row++){
-      const wy=off+row*cellPx; // pixel y of boundary
-      if(Math.abs(py2-wy)<=hw){
-        // which cell column are we in?
-        const cx=pxToCell(px2,off);
-        if(cx<0||cx>=C)return true;
-        // is there a wall here?
-        if(row===0){if(cells[0*C+cx].n)return true;}
-        else if(row===C){if(cells[(C-1)*C+cx].s)return true;}
-        else{if(cells[(row-1)*C+cx].s||cells[row*C+cx].n)return true;}
-      }
+
+  // BFS shortest path length from (0,0) to every cell
+  function bfsDist(){
+    const dist=new Int32Array(C*C).fill(-1);dist[0]=0;
+    const q=[0];const dirs=[['n',0,-1],['e',1,0],['s',0,1],['w',-1,0]];
+    while(q.length){
+      const cur=q.shift();const cx=cur%C,cy=(cur/C)|0;
+      for(const[d,dx,dy]of dirs){
+        if(!cells[cur][d]){const nx=cx+dx,ny=cy+dy;const ni=ny*C+nx;
+          if(ni>=0&&ni<C*C&&dist[ni]===-1){dist[ni]=dist[cur]+1;q.push(ni);}}}
     }
-    // vertical boundaries (between columns)
-    for(let col=0;col<=C;col++){
-      const wx=off+col*cellPx;
-      if(Math.abs(px2-wx)<=hw){
-        const cy=pxToCell(py2,off);
-        if(cy<0||cy>=C)return true;
-        if(col===0){if(cells[cy*C+0].w)return true;}
-        else if(col===C){if(cells[cy*C+(C-1)].e)return true;}
-        else{if(cells[cy*C+col-1].e||cells[cy*C+col].w)return true;}
-      }
-    }
+    return dist;
+  }
+
+  function newMaze(){
+    cells=carveDFS();
+    // pick goal: one of the far cells (top 15% by distance from start)
+    const dist=bfsDist();
+    const maxD=Math.max(...dist);const threshold=maxD*0.85;
+    const candidates=[];
+    for(let i=0;i<C*C;i++)if(dist[i]>=threshold&&i!==0)candidates.push(i);
+    const gi=candidates[Math.floor(Math.random()*candidates.length)]||C*C-1;
+    goalc={x:gi%C,y:(gi/C)|0};
+  }
+
+  // cell top-left pixel in maze coords
+  function cellXY(cx,cy){return[WALL+cx*CELL,WALL+cy*CELL];}
+  // cell center
+  function cellCenter(cx,cy){const[ox,oy]=cellXY(cx,cy);return[ox+CELL/2,oy+CELL/2];}
+
+  function respawn(){[px,py]=cellCenter(0,0);}
+
+  // collision: player is a small square half=4px in maze coords
+  const HALF=4;
+  function blocked(mx,my){
+    // out of maze
+    if(mx<WALL||my<WALL||mx>=TOTAL-WALL||my>=TOTAL-WALL)return true;
+    // which cell?
+    const cx=Math.floor((mx-WALL)/CELL),cy=Math.floor((my-WALL)/CELL);
+    if(cx<0||cy<0||cx>=C||cy>=C)return true;
+    const cell=cells[cy*C+cx];
+    // local position within cell (px from cell top-left)
+    const lx=(mx-WALL)-cx*CELL,ly=(my-WALL)-cy*CELL;
+    // touching north wall of this cell
+    if(ly<=WALL&&cell.n)return true;
+    // touching south wall
+    if(ly>=CELL-WALL&&(cy===C-1?cell.s:cells[(cy+1)*C+cx].n))return true;
+    // touching west wall
+    if(lx<=WALL&&cell.w)return true;
+    // touching east wall
+    if(lx>=CELL-WALL&&(cx===C-1?cell.e:cells[cy*C+cx+1].w))return true;
     return false;
   }
-  function hitWall(x,y){
-    const h=half;
-    return ptHitsWall(x-h,y-h)||ptHitsWall(x+h,y-h)||
-           ptHitsWall(x-h,y+h)||ptHitsWall(x+h,y+h)||
-           ptHitsWall(x,y-h)  ||ptHitsWall(x,y+h)  ||
-           ptHitsWall(x-h,y)  ||ptHitsWall(x+h,y);
+  function hitWall(mx,my){
+    return blocked(mx-HALF,my-HALF)||blocked(mx+HALF,my-HALF)||
+           blocked(mx-HALF,my+HALF)||blocked(mx+HALF,my+HALF);
   }
-  function loop(){if(ended)return;
-    vx=(vx+jx*ACC)*FR;vy=(vy+jy*ACC)*FR;
-    const steps=8;let hit=false;
-    for(let i=0;i<steps;i++){const nx=px+vx/steps,ny=py+vy/steps;if(hitWall(nx,ny)){hit=true;break;}px=nx;py=ny;}
-    if(hit){deaths++;document.getElementById('mzDeath').textContent=deaths;respawn();}
-    const g=cellCenter(goalc.x,goalc.y);
-    if(Math.abs(px-g[0])<cellPx*0.4&&Math.abs(py-g[1])<cellPx*0.4){win();return;}
-    draw();raf=requestAnimationFrame(loop);}
-  // offscreen fog canvas — reused each frame
-  let fogCV=null,fogCX=null;
-  function ensureFog(){if(fogCV&&fogCV.width===size)return;fogCV=document.createElement('canvas');fogCV.width=size;fogCV.height=size;fogCX=fogCV.getContext('2d');}
-  // smooth facing direction
-  let faceAng=0;
+
+  // draw maze on offscreen, reuse
+  let sceneCV=null;
+  function buildScene(){
+    sceneCV=document.createElement('canvas');sceneCV.width=TOTAL;sceneCV.height=TOTAL;
+    const c=sceneCV.getContext('2d');
+    c.fillStyle='#0a0e0a';c.fillRect(0,0,TOTAL,TOTAL);
+    c.strokeStyle='#19d3e6';c.lineWidth=WALL;c.lineCap='square';
+    c.beginPath();
+    for(let cy=0;cy<C;cy++)for(let cx=0;cx<C;cx++){
+      const[ox,oy]=cellXY(cx,cy);const ex=ox+CELL,ey=oy+CELL;
+      const cell=cells[cy*C+cx];
+      if(cell.n){c.moveTo(ox,oy);c.lineTo(ex,oy);}
+      if(cell.w){c.moveTo(ox,oy);c.lineTo(ox,ey);}
+      if(cx===C-1&&cell.e){c.moveTo(ex,oy);c.lineTo(ex,ey);}
+      if(cy===C-1&&cell.s){c.moveTo(ox,ey);c.lineTo(ex,ey);}
+    }
+    c.stroke();
+    // outer border
+    c.strokeStyle='#19d3e6';c.lineWidth=WALL;
+    c.strokeRect(WALL/2,WALL/2,TOTAL-WALL,TOTAL-WALL);
+    // goal
+    const[gx,gy]=cellCenter(goalc.x,goalc.y);
+    c.fillStyle='#ff3b2f';c.fillRect(gx-CELL*0.35,gy-CELL*0.35,CELL*0.7,CELL*0.7);
+  }
+
   function draw(){
-    const spd=Math.hypot(vx,vy);
-    if(spd>0.15){const targetAng=Math.atan2(vy,vx);
-      let da=targetAng-faceAng;while(da>Math.PI)da-=Math.PI*2;while(da<-Math.PI)da+=Math.PI*2;
-      faceAng+=da*0.18;}
-    const beamLen=cellPx*1.6,halfAngle=Math.PI/4;
-    const angL=faceAng-halfAngle,angR=faceAng+halfAngle;
+    const vw=cv.width,vh=cv.height;
+    // viewport: center on player, clamped to maze bounds
+    let camX=px-vw/2,camY=py-vh/2;
+    camX=Math.max(0,Math.min(TOTAL-vw,camX));
+    camY=Math.max(0,Math.min(TOTAL-vh,camY));
+    ctx.fillStyle='#0a0e0a';ctx.fillRect(0,0,vw,vh);
+    ctx.drawImage(sceneCV,camX,camY,vw,vh,0,0,vw,vh);
+    // player
+    const sx=px-camX,sy=py-camY;
+    ctx.fillStyle='#c6f432';ctx.fillRect(sx-HALF,sy-HALF,HALF*2,HALF*2);
+  }
 
-    // 1. draw scene on main canvas
-    ctx.fillStyle='#0a0e0a';ctx.fillRect(0,0,size,size);
-    ctx.strokeStyle='#19d3e6';ctx.lineWidth=wallT;ctx.lineCap='square';ctx.lineJoin='miter';
-    ctx.beginPath();
-    for(let wy=0;wy<C;wy++)for(let wx=0;wx<C;wx++){const c=cells[wy*C+wx];
-      const ox=off+wx*cellPx,oy=off+wy*cellPx,ex=ox+cellPx,ey=oy+cellPx;
-      if(c.n){ctx.moveTo(ox,oy);ctx.lineTo(ex,oy);}
-      if(c.w){ctx.moveTo(ox,oy);ctx.lineTo(ox,ey);}
-      if(wx===C-1&&c.e){ctx.moveTo(ex,oy);ctx.lineTo(ex,ey);}
-      if(wy===C-1&&c.s){ctx.moveTo(ox,ey);ctx.lineTo(ex,ey);}}
-    ctx.stroke();
-    const g=cellCenter(goalc.x,goalc.y),gs=cellPx*0.46;
-    ctx.fillStyle='#ff3b2f';ctx.fillRect(g[0]-gs/2,g[1]-gs/2,gs,gs);
+  const SPEED=1.2; // maze-pixels per frame — slow
+  function loop(){
+    if(ended)return;
+    let mx=px,my=py;
+    if(keys['ArrowLeft']||keys['a'])mx-=SPEED;
+    if(keys['ArrowRight']||keys['d'])mx+=SPEED;
+    if(keys['ArrowUp']||keys['w'])my-=SPEED;
+    if(keys['ArrowDown']||keys['s'])my+=SPEED;
+    if(!hitWall(mx,py))px=mx;
+    if(!hitWall(px,my))py=my;
+    // check wall hit — if new pos after both axes still hits something (shouldn't happen but safety)
+    if(hitWall(px,py)){deaths++;document.getElementById('mzDeath').textContent=deaths;respawn();}
+    // goal check
+    const[gx,gy]=cellCenter(goalc.x,goalc.y);
+    if(Math.abs(px-gx)<CELL*0.45&&Math.abs(py-gy)<CELL*0.45){win();return;}
+    draw();raf=requestAnimationFrame(loop);
+  }
 
-    // 2. build fog on separate canvas: fully black, cut sharp cone out
-    ensureFog();
-    fogCX.clearRect(0,0,size,size);
-    fogCX.fillStyle='#000';fogCX.fillRect(0,0,size,size);
-    fogCX.globalCompositeOperation='destination-out';
-    // sharp solid cone — fully transparent inside
-    fogCX.fillStyle='rgba(0,0,0,1)';
-    fogCX.beginPath();fogCX.moveTo(px,py);
-    fogCX.arc(px,py,beamLen,angL,angR);
-    fogCX.closePath();fogCX.fill();
-    // soft fade at the far edge only
-    const grd=fogCX.createRadialGradient(px,py,beamLen*0.75,px,py,beamLen);
-    grd.addColorStop(0,'rgba(0,0,0,0)');
-    grd.addColorStop(1,'rgba(0,0,0,1)');
-    fogCX.fillStyle=grd;
-    fogCX.beginPath();fogCX.moveTo(px,py);
-    fogCX.arc(px,py,beamLen,angL,angR);
-    fogCX.closePath();fogCX.fill();
-    fogCX.globalCompositeOperation='source-over';
+  function win(){
+    beep();
+    if((S.best.maze||0)<level){S.best.maze=level;document.getElementById('mzBest').textContent=level;}
+    markTrained();save();
+    if(level>=MAXLVL){showOver('good','🏁 30/30','Все тридцать лабиринтов пройдены.');return;}
+    level++;document.getElementById('mzLvl').textContent=level;
+    newMaze();buildScene();respawn();
+    raf=requestAnimationFrame(loop);
+  }
 
-    // 3. paste fog over scene
-    ctx.drawImage(fogCV,0,0);
+  // keyboard
+  function kdown(e){if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','w','a','s','d'].includes(e.key)){keys[e.key]=true;e.preventDefault();}}
+  function kup(e){keys[e.key]=false;}
+  window.addEventListener('keydown',kdown);
+  window.addEventListener('keyup',kup);
 
-    // 4. player always on top
-    ctx.fillStyle='#c6f432';ctx.fillRect(px-half,py-half,half*2,half*2);
-    const fdx=Math.cos(faceAng)*half*0.8,fdy=Math.sin(faceAng)*half*0.8;
-    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(px+fdx,py+fdy,half*0.28,0,Math.PI*2);ctx.fill();}
-  function win(){beep();if((S.best.maze||0)<Math.min(level,MAXLVL)){S.best.maze=Math.min(level,MAXLVL);document.getElementById('mzBest').textContent=S.best.maze;}markTrained();save();
-    if(level>=MAXLVL){showOver('good','🏁 30/30','Все тридцать уровней пройдены. Лабиринты тебе больше не страшны. Дальше — просто для удовольствия.');setup();raf=requestAnimationFrame(loop);return;}
-    level++;setup();raf=requestAnimationFrame(loop);}
-  // joystick appears under finger
-  function pt(e){const r=stage.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
-  let ox=0,oy=0,jact=false;
-  function jstart(e){const p=pt(e);ox=p[0];oy=p[1];jact=true;joy.style.display='block';joy.style.left=(ox-75)+'px';joy.style.top=(oy-75)+'px';knob.style.left='45px';knob.style.top='45px';jx=jy=0;e.preventDefault();}
-  function jmove(e){if(!jact)return;const p=pt(e);let dx=p[0]-ox,dy=p[1]-oy;const dist=Math.hypot(dx,dy)||0.0001;const kd=Math.min(dist,maxR);
-    knob.style.left=(45+dx/dist*kd)+'px';knob.style.top=(45+dy/dist*kd)+'px';
-    if(dist<dead){jx=jy=0;}else{const m=Math.min(1,(dist-dead)/(maxR-dead));jx=dx/dist*m;jy=dy/dist*m;}}
-  function jend(){jact=false;jx=jy=0;joy.style.display='none';}
-  stage.addEventListener('pointerdown',jstart);
-  stage.addEventListener('pointermove',jmove);
-  stage.addEventListener('pointerup',jend);
-  stage.addEventListener('pointerleave',jend);
-  stage.addEventListener('pointercancel',jend);
-  setTimeout(()=>{setup();loop();},40);
-  activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);};
+  // swipe/touch d-pad fallback on mobile
+  let tx0=0,ty0=0;
+  stage.addEventListener('pointerdown',e=>{tx0=e.clientX;ty0=e.clientY;});
+  stage.addEventListener('pointerup',e=>{
+    const dx=e.clientX-tx0,dy=e.clientY-ty0;
+    if(Math.abs(dx)<5&&Math.abs(dy)<5)return;
+    if(Math.abs(dx)>Math.abs(dy)){keys[dx>0?'ArrowRight':'ArrowLeft']=true;setTimeout(()=>{keys['ArrowRight']=false;keys['ArrowLeft']=false;},120);}
+    else{keys[dy>0?'ArrowDown':'ArrowUp']=true;setTimeout(()=>{keys['ArrowDown']=false;keys['ArrowUp']=false;},120);}
+  });
+  setTimeout(()=>{newMaze();buildScene();respawn();raf=requestAnimationFrame(loop);},40);
+  activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);window.removeEventListener('keydown',kdown);window.removeEventListener('keyup',kup);};
 }
 /* TRUTH CARDS — craving tool */
 const TRUTH=[
