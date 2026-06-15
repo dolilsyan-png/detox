@@ -496,6 +496,7 @@ const EXERCISES=[
   {id:'tunnel',emoji:'🕳️',name:'Тоннель',lock:8,desc:'Удерживай палец на ползущей точке. Сорвался — заново.'},
   {id:'beast',emoji:'👹',name:'Режим Зверь',lock:12,desc:'Жёсткий скоростной дрил. Только для прокачанных.'},
   {id:'maze',emoji:'🌀',name:'Лабиринт',lock:0,desc:'Скользящий квадрат, случайные лабиринты, много уровней.'},
+  {id:'dodge',emoji:'🔫',name:'Уклонение',lock:0,desc:'Уворачивайся от пуль. Чем дольше — тем их больше. Одно касание — смерть.'},
 ];
 function renderTrain(){
   const g=document.getElementById('xgrid');g.innerHTML='';
@@ -538,7 +539,7 @@ function openExercise(id){
   const x=EXERCISES.find(e=>e.id===id);if((x.lock||0)>S.level){toast('🔒 Откроется на уровне '+x.lock);return;}
   document.getElementById('mTitle').textContent=x.name;modal.classList.add('open');
   if(id==='breath')exBreath();if(id==='dot')exDot();if(id==='gng')exGNG();if(id==='calc')exCalc();if(id==='focus')exFocus();if(id==='grid')exGrid();
-  if(id==='flow')exFlow();if(id==='truth')exTruth();if(id==='tunnel')exTunnel();if(id==='beast')exBeast();if(id==='maze')exMaze();
+  if(id==='flow')exFlow();if(id==='truth')exTruth();if(id==='tunnel')exTunnel();if(id==='beast')exBeast();if(id==='maze')exMaze();if(id==='dodge')exDodge();
 }
 
 let actx;
@@ -914,15 +915,15 @@ function exMaze(){
     ctx.drawImage(sceneCV,camX,camY,vw,vh,0,0,vw,vh);
     // player screen pos
     const sx=px-camX,sy=py-camY;
-    // fog with radial light cutout
+    // fog — fully black, sharp cutout around player
     ensureFog(vw,vh);
     fogCX.clearRect(0,0,vw,vh);
-    fogCX.fillStyle='rgba(0,0,0,0.92)';fogCX.fillRect(0,0,vw,vh);
+    fogCX.fillStyle='#000';fogCX.fillRect(0,0,vw,vh);
     fogCX.globalCompositeOperation='destination-out';
-    const R=CELL*2.5;
+    const R=CELL*1.6; // smaller light radius
     const grd=fogCX.createRadialGradient(sx,sy,0,sx,sy,R);
     grd.addColorStop(0,'rgba(0,0,0,1)');
-    grd.addColorStop(0.55,'rgba(0,0,0,0.85)');
+    grd.addColorStop(0.7,'rgba(0,0,0,1)');
     grd.addColorStop(1,'rgba(0,0,0,0)');
     fogCX.fillStyle=grd;fogCX.fillRect(0,0,vw,vh);
     fogCX.globalCompositeOperation='source-over';
@@ -939,10 +940,14 @@ function exMaze(){
     if(keys['ArrowRight']||keys['d'])mx+=SPEED;
     if(keys['ArrowUp']||keys['w'])my-=SPEED;
     if(keys['ArrowDown']||keys['s'])my+=SPEED;
-    if(!hitWall(mx,py))px=mx;
-    if(!hitWall(px,my))py=my;
-    // check wall hit — if new pos after both axes still hits something (shouldn't happen but safety)
-    if(hitWall(px,py)){deaths++;document.getElementById('mzDeath').textContent=deaths;respawn();}
+    const movedX=!hitWall(mx,py);
+    const movedY=!hitWall(px,my);
+    if(movedX)px=mx;
+    if(movedY)py=my;
+    // death: tried to move but both axes blocked = touching wall
+    if(!movedX&&!movedY&&(mx!==px||my!==py)){deaths++;document.getElementById('mzDeath').textContent=deaths;respawn();return;}
+    // also die if somehow inside wall
+    if(hitWall(px,py)){deaths++;document.getElementById('mzDeath').textContent=deaths;respawn();return;}
     // goal check
     const[gx,gy]=cellCenter(goalc.x,goalc.y);
     if(Math.abs(px-gx)<CELL*0.45&&Math.abs(py-gy)<CELL*0.45){win();return;}
@@ -975,6 +980,94 @@ function exMaze(){
   });
   setTimeout(()=>{newMaze();buildScene();respawn();raf=requestAnimationFrame(loop);},40);
   activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);window.removeEventListener('keydown',kdown);window.removeEventListener('keyup',kup);};
+}
+/* DODGE — уворачивайся от пуль */
+function exDodge(){
+  mBody.innerHTML=
+    '<p class="mhint">Уворачивайся от пуль. Касание — смерть. Каждые 5 секунд пуля добавляется.</p>'+
+    '<div class="readout"><div><b id="dgTime">0.0</b>сек</div><div><b id="dgBullets">0</b>пуль</div><div><b id="dgBest">'+(S.best.dodge?S.best.dodge.toFixed(1):'—')+'</b>рекорд</div></div>'+
+    '<div class="stage" id="dgStage" style="touch-action:none;position:relative;cursor:none"></div>';
+
+  const stage=document.getElementById('dgStage');
+  let ended=false,raf,startT=Date.now(),px=0,py=0,bullets=[],spawnIv,timerIv;
+
+  // player follows finger/mouse
+  function getPos(e){const r=stage.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
+  stage.addEventListener('pointermove',e=>{[px,py]=getPos(e);});
+  stage.addEventListener('pointerdown',e=>{[px,py]=getPos(e);});
+
+  // spawn at center initially
+  setTimeout(()=>{const r=stage.getBoundingClientRect();px=r.width/2;py=r.height/2;},30);
+
+  function spawnBullet(){
+    const r=stage.getBoundingClientRect();
+    const W=r.width,H=r.height;
+    // spawn from random edge
+    const side=Math.floor(Math.random()*4);
+    let bx,by;
+    if(side===0){bx=Math.random()*W;by=-8;}
+    else if(side===1){bx=W+8;by=Math.random()*H;}
+    else if(side===2){bx=Math.random()*W;by=H+8;}
+    else{bx=-8;by=Math.random()*H;}
+    // aim slightly toward center with spread
+    const cx=W/2,cy=H/2;
+    const ang=Math.atan2(cy-by,cx-bx)+(Math.random()-0.5)*1.2;
+    const spd=2.5+Math.random()*2;
+    bullets.push({x:bx,y:by,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,r:6});
+  }
+
+  // start with 3 bullets, add one every 5s
+  spawnBullet();spawnBullet();spawnBullet();
+  spawnIv=setInterval(()=>{if(!ended)spawnBullet();},5000);
+
+  function draw(){
+    const r=stage.getBoundingClientRect();const W=r.width,H=r.height;
+    // draw on a canvas inside stage
+    let cv=stage.querySelector('canvas');
+    if(!cv){cv=document.createElement('canvas');cv.style.cssText='position:absolute;inset:0;width:100%;height:100%';stage.appendChild(cv);}
+    if(cv.width!==Math.round(W)||cv.height!==Math.round(H)){cv.width=Math.round(W);cv.height=Math.round(H);}
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#0a0e0a';ctx.fillRect(0,0,W,H);
+    // bullets
+    bullets.forEach(b=>{
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      ctx.fillStyle='#ff4d3d';ctx.fill();
+    });
+    // player
+    const PR=7;
+    ctx.fillStyle='#c6f432';ctx.fillRect(px-PR,py-PR,PR*2,PR*2);
+  }
+
+  function loop(){
+    if(ended)return;
+    const r=stage.getBoundingClientRect();const W=r.width,H=r.height;
+    // move bullets
+    bullets.forEach(b=>{b.x+=b.vx;b.y+=b.vy;});
+    // remove off-screen bullets (far out)
+    bullets=bullets.filter(b=>b.x>-50&&b.x<W+50&&b.y>-50&&b.y<H+50);
+    // collision
+    const PR=7;
+    for(const b of bullets){
+      if(Math.abs(b.x-px)<b.r+PR&&Math.abs(b.y-py)<b.r+PR){die();return;}
+    }
+    draw();
+    // update timer display
+    const elapsed=(Date.now()-startT)/1000;
+    const el=document.getElementById('dgTime');if(el)el.textContent=elapsed.toFixed(1);
+    const bl=document.getElementById('dgBullets');if(bl)bl.textContent=bullets.length;
+    raf=requestAnimationFrame(loop);
+  }
+
+  function die(){
+    ended=true;cancelAnimationFrame(raf);clearInterval(spawnIv);
+    const elapsed=(Date.now()-startT)/1000;
+    if(!S.best.dodge||elapsed>S.best.dodge){S.best.dodge=elapsed;}
+    markTrained();save();
+    showOver(elapsed>10?'good':'bad','💀 '+elapsed.toFixed(1)+'с','Рекорд: '+S.best.dodge.toFixed(1)+'с · Пуль на поле: '+bullets.length);
+  }
+
+  raf=requestAnimationFrame(loop);
+  activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);clearInterval(spawnIv);};
 }
 /* TRUTH CARDS — craving tool */
 const TRUTH=[
