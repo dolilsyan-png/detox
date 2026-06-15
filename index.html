@@ -781,10 +781,15 @@ function exMaze(){
   let deaths=0,level=1,raf,ended=false;
   let keys={};
 
+  const dpadCSS='width:58px;height:58px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--acid);font-size:22px;cursor:pointer;user-select:none;-webkit-user-select:none;display:grid;place-items:center;touch-action:none';
   mBody.innerHTML=
-    '<p class="mhint" style="font-size:11px">Стрелки — движение. Найди красный выход. Коснулся стены — старт.</p>'+
+    '<p class="mhint" style="font-size:11px">Стрелки или кнопки ниже. Найди красный выход. Коснулся стены — старт.</p>'+
     '<div class="readout"><div><b id="mzLvl">1</b>/'+MAXLVL+'</div><div><b id="mzDeath">0</b>врезался</div><div><b id="mzBest">'+(S.best.maze||0)+'</b>рекорд</div></div>'+
-    '<div id="mzStage" style="touch-action:none"><canvas id="mzCanvas" style="display:block;border-radius:12px"></canvas></div>';
+    '<div id="mzStage" style="touch-action:none"><canvas id="mzCanvas" style="display:block;border-radius:12px"></canvas></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,58px);gap:8px;justify-content:center;margin-top:12px">'+
+    '<div></div><div id="dU" style="'+dpadCSS+'">▲</div><div></div>'+
+    '<div id="dL" style="'+dpadCSS+'">◀</div><div id="dD" style="'+dpadCSS+'">▼</div><div id="dR" style="'+dpadCSS+'">▶</div>'+
+    '</div>';
 
   const stage=document.getElementById('mzStage'),cv=document.getElementById('mzCanvas'),ctx=cv.getContext('2d');
 
@@ -895,16 +900,34 @@ function exMaze(){
     c.fillStyle='#ff3b2f';c.fillRect(gx-CELL*0.35,gy-CELL*0.35,CELL*0.7,CELL*0.7);
   }
 
+  // offscreen fog canvas
+  let fogCV=null,fogCX=null;
+  function ensureFog(w,h){if(fogCV&&fogCV.width===w&&fogCV.height===h)return;fogCV=document.createElement('canvas');fogCV.width=w;fogCV.height=h;fogCX=fogCV.getContext('2d');}
+
   function draw(){
     const vw=cv.width,vh=cv.height;
-    // viewport: center on player, clamped to maze bounds
     let camX=px-vw/2,camY=py-vh/2;
     camX=Math.max(0,Math.min(TOTAL-vw,camX));
     camY=Math.max(0,Math.min(TOTAL-vh,camY));
+    // draw scene
     ctx.fillStyle='#0a0e0a';ctx.fillRect(0,0,vw,vh);
     ctx.drawImage(sceneCV,camX,camY,vw,vh,0,0,vw,vh);
-    // player
+    // player screen pos
     const sx=px-camX,sy=py-camY;
+    // fog with radial light cutout
+    ensureFog(vw,vh);
+    fogCX.clearRect(0,0,vw,vh);
+    fogCX.fillStyle='rgba(0,0,0,0.92)';fogCX.fillRect(0,0,vw,vh);
+    fogCX.globalCompositeOperation='destination-out';
+    const R=CELL*2.5;
+    const grd=fogCX.createRadialGradient(sx,sy,0,sx,sy,R);
+    grd.addColorStop(0,'rgba(0,0,0,1)');
+    grd.addColorStop(0.55,'rgba(0,0,0,0.85)');
+    grd.addColorStop(1,'rgba(0,0,0,0)');
+    fogCX.fillStyle=grd;fogCX.fillRect(0,0,vw,vh);
+    fogCX.globalCompositeOperation='source-over';
+    ctx.drawImage(fogCV,0,0);
+    // player on top
     ctx.fillStyle='#c6f432';ctx.fillRect(sx-HALF,sy-HALF,HALF*2,HALF*2);
   }
 
@@ -942,14 +965,13 @@ function exMaze(){
   window.addEventListener('keydown',kdown);
   window.addEventListener('keyup',kup);
 
-  // swipe/touch d-pad fallback on mobile
-  let tx0=0,ty0=0;
-  stage.addEventListener('pointerdown',e=>{tx0=e.clientX;ty0=e.clientY;});
-  stage.addEventListener('pointerup',e=>{
-    const dx=e.clientX-tx0,dy=e.clientY-ty0;
-    if(Math.abs(dx)<5&&Math.abs(dy)<5)return;
-    if(Math.abs(dx)>Math.abs(dy)){keys[dx>0?'ArrowRight':'ArrowLeft']=true;setTimeout(()=>{keys['ArrowRight']=false;keys['ArrowLeft']=false;},120);}
-    else{keys[dy>0?'ArrowDown':'ArrowUp']=true;setTimeout(()=>{keys['ArrowDown']=false;keys['ArrowUp']=false;},120);}
+  // d-pad buttons
+  [['dU','ArrowUp'],['dD','ArrowDown'],['dL','ArrowLeft'],['dR','ArrowRight']].forEach(([id,k])=>{
+    const btn=document.getElementById(id);if(!btn)return;
+    btn.addEventListener('pointerdown',e=>{keys[k]=true;e.preventDefault();});
+    btn.addEventListener('pointerup',  e=>{keys[k]=false;});
+    btn.addEventListener('pointerleave',e=>{keys[k]=false;});
+    btn.addEventListener('pointercancel',e=>{keys[k]=false;});
   });
   setTimeout(()=>{newMaze();buildScene();respawn();raf=requestAnimationFrame(loop);},40);
   activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);window.removeEventListener('keydown',kdown);window.removeEventListener('keyup',kup);};
