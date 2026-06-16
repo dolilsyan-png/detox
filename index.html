@@ -418,6 +418,22 @@ function renderToday(){
     html+='<div class="daydone"><b>🏁 30 дней пройдено</b><p>Детокс окончен — теперь это просто твоя жизнь.</p></div>';
     box.innerHTML=html; return;
   }
+  // morning alternatives block (shown between ~5am and ~11am)
+  const nowH=new Date().getHours();
+  if(nowH>=5&&nowH<11){
+    const alts=[
+      ['🚿','Сделай душ прямо сейчас'],['☕','Завари кофе/чай — медленно'],['🪟','Открой окно, просто подыши'],
+      ['🏃','Выйди на 10 минут — куда угодно'],['💪','5 отжиманий. Прямо сейчас'],['📖','Открой книгу, хотя бы одну страницу'],
+      ['🎵','Включи один трек и просто слушай'],['🌿','Полей цветок или приберись в одном углу'],
+      ['✍️','Напиши 3 вещи, которые хочешь сделать сегодня'],['🧘','2 минуты: закрой глаза, подыши'],
+    ];
+    const picks=[];const seed=currentDayIdx()*3+Math.floor(nowH/3);
+    for(let i=0;i<3;i++)picks.push(alts[(seed+i*3)%alts.length]);
+    html+='<div style="border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px;margin-bottom:12px">'+
+      '<div style="font-family:Space Mono,monospace;font-size:11px;color:var(--acid);letter-spacing:2px;margin-bottom:10px">☀️ ВМЕСТО ТЕЛЕФОНА</div>'+
+      picks.map(([e,t])=>'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:14px"><span style="font-size:20px">'+e+'</span>'+t+'</div>').join('')+
+      '</div>';
+  }
   // fact of the day
   html+='<div class="factcard"><b>мысль дня</b>'+FACTS[currentDayIdx()%FACTS.length]+'</div>';
   items.forEach(it=>{
@@ -496,7 +512,6 @@ const EXERCISES=[
   {id:'tunnel',emoji:'🕳️',name:'Тоннель',lock:8,desc:'Удерживай палец на ползущей точке. Сорвался — заново.'},
   {id:'beast',emoji:'👹',name:'Режим Зверь',lock:12,desc:'Жёсткий скоростной дрил. Только для прокачанных.'},
   {id:'maze',emoji:'🌀',name:'Лабиринт',lock:0,desc:'Скользящий квадрат, случайные лабиринты, много уровней.'},
-  {id:'dodge',emoji:'🔫',name:'Уклонение',lock:0,desc:'Уворачивайся от пуль. Чем дольше — тем их больше. Одно касание — смерть.'},
 ];
 function renderTrain(){
   const g=document.getElementById('xgrid');g.innerHTML='';
@@ -539,7 +554,7 @@ function openExercise(id){
   const x=EXERCISES.find(e=>e.id===id);if((x.lock||0)>S.level){toast('🔒 Откроется на уровне '+x.lock);return;}
   document.getElementById('mTitle').textContent=x.name;modal.classList.add('open');
   if(id==='breath')exBreath();if(id==='dot')exDot();if(id==='gng')exGNG();if(id==='calc')exCalc();if(id==='focus')exFocus();if(id==='grid')exGrid();
-  if(id==='flow')exFlow();if(id==='truth')exTruth();if(id==='tunnel')exTunnel();if(id==='beast')exBeast();if(id==='maze')exMaze();if(id==='dodge')exDodge();
+  if(id==='flow')exFlow();if(id==='truth')exTruth();if(id==='tunnel')exTunnel();if(id==='beast')exBeast();if(id==='maze')exMaze();
 }
 
 let actx;
@@ -981,94 +996,6 @@ function exMaze(){
   setTimeout(()=>{newMaze();buildScene();respawn();raf=requestAnimationFrame(loop);},40);
   activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);window.removeEventListener('keydown',kdown);window.removeEventListener('keyup',kup);};
 }
-/* DODGE — уворачивайся от пуль */
-function exDodge(){
-  mBody.innerHTML=
-    '<p class="mhint">Уворачивайся от пуль. Касание — смерть. Каждые 5 секунд пуля добавляется.</p>'+
-    '<div class="readout"><div><b id="dgTime">0.0</b>сек</div><div><b id="dgBullets">0</b>пуль</div><div><b id="dgBest">'+(S.best.dodge?S.best.dodge.toFixed(1):'—')+'</b>рекорд</div></div>'+
-    '<div class="stage" id="dgStage" style="touch-action:none;position:relative;cursor:none"></div>';
-
-  const stage=document.getElementById('dgStage');
-  let ended=false,raf,startT=Date.now(),px=0,py=0,bullets=[],spawnIv,timerIv;
-
-  // player follows finger/mouse
-  function getPos(e){const r=stage.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
-  stage.addEventListener('pointermove',e=>{[px,py]=getPos(e);});
-  stage.addEventListener('pointerdown',e=>{[px,py]=getPos(e);});
-
-  // spawn at center initially
-  setTimeout(()=>{const r=stage.getBoundingClientRect();px=r.width/2;py=r.height/2;},30);
-
-  function spawnBullet(){
-    const r=stage.getBoundingClientRect();
-    const W=r.width,H=r.height;
-    // spawn from random edge
-    const side=Math.floor(Math.random()*4);
-    let bx,by;
-    if(side===0){bx=Math.random()*W;by=-8;}
-    else if(side===1){bx=W+8;by=Math.random()*H;}
-    else if(side===2){bx=Math.random()*W;by=H+8;}
-    else{bx=-8;by=Math.random()*H;}
-    // aim slightly toward center with spread
-    const cx=W/2,cy=H/2;
-    const ang=Math.atan2(cy-by,cx-bx)+(Math.random()-0.5)*1.2;
-    const spd=2.5+Math.random()*2;
-    bullets.push({x:bx,y:by,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,r:6});
-  }
-
-  // start with 3 bullets, add one every 5s
-  spawnBullet();spawnBullet();spawnBullet();
-  spawnIv=setInterval(()=>{if(!ended)spawnBullet();},5000);
-
-  function draw(){
-    const r=stage.getBoundingClientRect();const W=r.width,H=r.height;
-    // draw on a canvas inside stage
-    let cv=stage.querySelector('canvas');
-    if(!cv){cv=document.createElement('canvas');cv.style.cssText='position:absolute;inset:0;width:100%;height:100%';stage.appendChild(cv);}
-    if(cv.width!==Math.round(W)||cv.height!==Math.round(H)){cv.width=Math.round(W);cv.height=Math.round(H);}
-    const ctx=cv.getContext('2d');
-    ctx.fillStyle='#0a0e0a';ctx.fillRect(0,0,W,H);
-    // bullets
-    bullets.forEach(b=>{
-      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
-      ctx.fillStyle='#ff4d3d';ctx.fill();
-    });
-    // player
-    const PR=7;
-    ctx.fillStyle='#c6f432';ctx.fillRect(px-PR,py-PR,PR*2,PR*2);
-  }
-
-  function loop(){
-    if(ended)return;
-    const r=stage.getBoundingClientRect();const W=r.width,H=r.height;
-    // move bullets
-    bullets.forEach(b=>{b.x+=b.vx;b.y+=b.vy;});
-    // remove off-screen bullets (far out)
-    bullets=bullets.filter(b=>b.x>-50&&b.x<W+50&&b.y>-50&&b.y<H+50);
-    // collision
-    const PR=7;
-    for(const b of bullets){
-      if(Math.abs(b.x-px)<b.r+PR&&Math.abs(b.y-py)<b.r+PR){die();return;}
-    }
-    draw();
-    // update timer display
-    const elapsed=(Date.now()-startT)/1000;
-    const el=document.getElementById('dgTime');if(el)el.textContent=elapsed.toFixed(1);
-    const bl=document.getElementById('dgBullets');if(bl)bl.textContent=bullets.length;
-    raf=requestAnimationFrame(loop);
-  }
-
-  function die(){
-    ended=true;cancelAnimationFrame(raf);clearInterval(spawnIv);
-    const elapsed=(Date.now()-startT)/1000;
-    if(!S.best.dodge||elapsed>S.best.dodge){S.best.dodge=elapsed;}
-    markTrained();save();
-    showOver(elapsed>10?'good':'bad','💀 '+elapsed.toFixed(1)+'с','Рекорд: '+S.best.dodge.toFixed(1)+'с · Пуль на поле: '+bullets.length);
-  }
-
-  raf=requestAnimationFrame(loop);
-  activeCleanup=()=>{ended=true;cancelAnimationFrame(raf);clearInterval(spawnIv);};
-}
 /* TRUTH CARDS — craving tool */
 const TRUTH=[
   'Тяга пройдёт за 2 минуты, если её не кормить. Ты сильнее минуты.',
@@ -1193,12 +1120,12 @@ function sessionDef(letter,week,max){const p=bPhase(week);const pr=pullReps(week
     {name:'Подтягивания широким хватом',sets:4,reps:pr,rest:p===3?180:150,note:'Грудь веди к перекладине, локти тяни вниз. Поясница чуть включена, верх спины НЕ круглить.'},
     {name:'Австралийские тяги (горизонтальные)',sets:3,reps:10,rest:90,note:'Тело прямой струной, своди лопатки, тяни себя грудью к опоре. Резина или низкая перекладина.'},
     {name:'Подъём ног или коленей в висе',sets:3,reps:10,rest:45,note:'Без раскачки, контролируй, кор напряжён.'}])};
-  if(letter==='B')return{letter:'B',focus:'Жим и кор — баланс и восстановление спины',items:[
-    {name:'Отжимания',sets:4,reps:p===1?10:(p===2?14:18),rest:75,note:'Тело прямое, локти под ~45°, грудь почти до пола.'},
-    {name:'Брусья или отжимания узким хватом',sets:3,reps:8,rest:90,note:'Нет брусьев — отжимания узким (ромб) хватом.'},
-    {name:'Лёгкие подтягивания (грязинг)',sets:3,reps:3,rest:60,note:'Без отказа, чисто и легко — «смазка» нервной системы, двигает цифру без выгорания.'},
-    {name:'Полый присед (hollow hold)',sets:3,reps:'30-45 сек',rest:45,note:'Поясница прижата к полу, руки и ноги вытянуты, поясницу не отрывай.'},
-    {name:'Кардио (ходьба/лёгкий бег)',sets:1,reps:'12-15 мин',rest:0,note:'Спокойное кардио — работает на жиросжигание.'}]};
+  if(letter==='B')return{letter:'B',focus:'Жим и кор — всё на перекладине и асфальте',items:[
+    {name:'Отжимания',sets:4,reps:p===1?10:(p===2?14:18),rest:75,note:'Тело прямое, локти под ~45°, грудь почти до пола. Если есть бордюр — поставь руки выше для более глубокого движения.'},
+    {name:'Брусья или отжимания узким хватом',sets:3,reps:8,rest:90,note:'Нет брусьев — ставь ладони ромбом: указательные и большие пальцы касаются. Локти смотрят назад.'},
+    {name:'Подтягивания (разные хваты)',sets:3,reps:Math.max(2,Math.round(pr*0.7)),rest:90,note:'Меняй хват каждый подход: прямой широкий → обратный → нейтральный. Без отказа — только чистые повторения.'},
+    {name:'Вис на прямых руках',sets:3,reps:'20-30 сек',rest:45,note:'Просто вис — декомпрессирует позвоночник, укрепляет хват. Лопатки не вверх, а вниз и назад.'},
+    {name:'Подъём коленей в висе',sets:3,reps:10,rest:45,note:'Медленно поднимай колени к груди, без раскачки. Удерживай кор. Если легко — выпрямляй ноги.'}]};
   return{letter:'C',focus:'Объём подтягиваний и ноги — сила и жиросжигание',items:[
     {name:'Подтягивания узким/нейтральным хватом',sets:5,reps:Math.max(3,Math.round(max*0.7)),rest:120,note:'Хват, где ты сильнее. Копишь объём — главный двигатель к 15.'},
     {name:'Подтягивания широким хватом',sets:3,reps:pr,rest:150,note:'Техника как в день А: грудь к перекладине, лопатки вниз.'},
@@ -1265,22 +1192,27 @@ function showDay(ds){const e=S.body.log[ds];if(!e)return;document.getElementById
 function startWorkout(){
   const week=bWeek(),max=S.body.max,letter=nextSession(),sess=sessionDef(letter,week,max);
   document.getElementById('mTitle').textContent='Тренировка '+letter;modal.classList.add('open');
-  let exIdx=0,setIdx=0,restIv=null;
-  // results: array per exercise, each with array of per-set actual reps
+  let exIdx=0,setIdx=0,restIv=null,exTimerIv=null;
   const results=sess.items.map(it=>({name:it.name,sets:it.sets,target:''+it.reps,actuals:[]}));
   function restFor(it,si){let r=it.rest;if(si>0)r+=10;return r;}
+  // parse timer seconds from strings like "20-30 сек" or "12-15 мин"
+  function parseTimeSec(s){if(typeof s!=='string')return null;const m=s.match(/(\d+)[\s-–]+(\d+)\s*(сек|мин|min|sec)/i);if(!m)return null;const lo=parseInt(m[1]),hi=parseInt(m[2]),unit=m[3].toLowerCase();const avg=Math.round((lo+hi)/2);return(unit==='мин'||unit==='min')?avg*60:avg;}
 
   function step(){
+    if(exTimerIv){clearInterval(exTimerIv);exTimerIv=null;}
     if(exIdx>=sess.items.length){resultsScreen();return;}
     const it=sess.items[exIdx];
     const target=typeof it.reps==='number'?it.reps:null;
     const isNumeric=target!==null;
-    // default shown value = target, decremented by previous set fatigue
+    const timeSec=isNumeric?null:parseTimeSec(''+it.reps);
+    const isTimed=timeSec!==null;
     let shown=isNumeric?target:null;
+    let timerLeft=isTimed?timeSec:0;
     mBody.innerHTML='<div style="font-family:Space Mono,monospace;font-size:11px;color:var(--ink-faint);margin-bottom:8px">'+sess.focus+' · упр. '+(exIdx+1)+'/'+sess.items.length+'</div>'+
       '<div class="exstep"><div class="en">'+it.name+'</div>'+
       '<div style="font-family:Space Mono,monospace;color:var(--ink-dim);margin-top:6px">Подход '+(setIdx+1)+' / '+it.sets+'</div>'+
       '<div class="ebig" id="exTarget">'+it.reps+'</div>'+
+      (isTimed?'<div class="restbig" id="exTimerN" style="font-size:48px;margin:4px 0">'+timerLeft+'</div>':'')+''+
       '<div class="ed">'+it.note+'</div></div>'+
       (isNumeric?
         '<div style="margin-top:14px;text-align:center"><div style="font-size:12px;color:var(--ink-faint);margin-bottom:8px;font-family:Space Mono,monospace">Сделал повторений:</div>'+
@@ -1291,7 +1223,7 @@ function startWorkout(){
         '</div>'+
         '<button class="btn go" id="setDone">✓ ПОДХОД СДЕЛАН'+(it.rest>0?' → ОТДЫХ':'')+'</button></div>'
       :
-        '<button class="btn go" style="margin-top:14px" id="setDone">✓ ПОДХОД СДЕЛАН'+(it.rest>0?' → ОТДЫХ':'')+'</button>'
+        '<button class="btn go" style="margin-top:14px" id="setDone" '+(isTimed?'style="opacity:.5"':'')+'>'+(isTimed?'⏳ ИДЁТ…':'✓ ПОДХОД СДЕЛАН')+(it.rest>0&&!isTimed?' → ОТДЫХ':'')+'</button>'
       );
     if(isNumeric){
       shown=target;
@@ -1299,7 +1231,18 @@ function startWorkout(){
       document.getElementById('repMinus').onclick=()=>{shown=Math.max(0,Math.round((shown-0.5)*2)/2);valEl.textContent=shown%1?shown.toFixed(1):shown;};
       document.getElementById('repPlus').onclick=()=>{shown=Math.round((shown+0.5)*2)/2;valEl.textContent=shown%1?shown.toFixed(1):shown;};
     }
+    if(isTimed){
+      // auto-countdown, button unlocks at 0
+      const btn=document.getElementById('setDone');
+      exTimerIv=setInterval(()=>{
+        timerLeft--;
+        const el=document.getElementById('exTimerN');if(el)el.textContent=timerLeft;
+        if(timerLeft<=0){clearInterval(exTimerIv);exTimerIv=null;beep();if(btn){btn.textContent='✓ ГОТОВО'+(it.rest>0?' → ОТДЫХ':'');btn.style.opacity='1';}}
+      },1000);
+    }
     document.getElementById('setDone').onclick=()=>{
+      if(exTimerIv)return; // timer still running
+      if(isTimed){clearInterval(exTimerIv);exTimerIv=null;}
       const actual=isNumeric?(shown%1?shown.toFixed(1):''+shown):(''+it.reps);
       results[exIdx].actuals.push(actual);
       const wasLastSet=setIdx>=it.sets-1,wasLastEx=exIdx>=sess.items.length-1;
@@ -1346,7 +1289,7 @@ function startWorkout(){
       S.body.log[localDate()]={session:letter,week:bWeek(),items:logItems,diff:diff||null};
       S.body.rotation=(S.body.rotation+1)%3;save();closeModal();renderBody();toast('💪 Тренировка сохранена');};
   }
-  step();activeCleanup=()=>{if(restIv)clearInterval(restIv);};
+  step();activeCleanup=()=>{if(restIv)clearInterval(restIv);if(exTimerIv)clearInterval(exTimerIv);};
 }
 function openDB(){return new Promise((res,rej)=>{try{const r=indexedDB.open('detoxBody',1);r.onupgradeneeded=()=>{r.result.createObjectStore('photos');};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}});}
 async function dbPut(id,blob){const db=await openDB();return new Promise((res,rej)=>{const t=db.transaction('photos','readwrite');t.objectStore('photos').put(blob,id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
