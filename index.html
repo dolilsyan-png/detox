@@ -1126,12 +1126,12 @@ function sessionDef(letter,week,max){const p=bPhase(week);const pr=pullReps(week
     {name:'Подтягивания (разные хваты)',sets:3,reps:Math.max(2,Math.round(pr*0.7)),rest:90,note:'Меняй хват каждый подход: прямой широкий → обратный → нейтральный. Без отказа — только чистые повторения.'},
     {name:'Вис на прямых руках',sets:3,reps:'20-30 сек',rest:45,note:'Просто вис — декомпрессирует позвоночник, укрепляет хват. Лопатки не вверх, а вниз и назад.'},
     {name:'Подъём коленей в висе',sets:3,reps:10,rest:45,note:'Медленно поднимай колени к груди, без раскачки. Удерживай кор. Если легко — выпрямляй ноги.'}]};
-  return{letter:'C',focus:'Объём подтягиваний и ноги — сила и жиросжигание',items:[
+  return{letter:'C',focus:'Объём подтягиваний и ноги — всё на турнике и асфальте',items:[
     {name:'Подтягивания узким/нейтральным хватом',sets:5,reps:Math.max(3,Math.round(max*0.7)),rest:120,note:'Хват, где ты сильнее. Копишь объём — главный двигатель к 15.'},
     {name:'Подтягивания широким хватом',sets:3,reps:pr,rest:150,note:'Техника как в день А: грудь к перекладине, лопатки вниз.'},
-    {name:'Приседания или выпады',sets:3,reps:15,rest:75,note:'Ноги — крупные мышцы, жгут много калорий.'},
-    {name:'Скручивания / велосипед',sets:3,reps:15,rest:40,note:'Медленно, чувствуй пресс, без рывков.'},
-    {name:'Кардио',sets:1,reps:'15-20 мин',rest:0,note:'Быстрая ходьба или лёгкий бег.'}]};
+    {name:'Приседания (пистолетик у опоры или обычные)',sets:3,reps:15,rest:75,note:'Держись за турник или столб для баланса, если делаешь на одной ноге. Ноги — крупные мышцы, жгут много калорий.'},
+    {name:'Выпады на месте',sets:3,reps:'12 на ногу',rest:60,note:'Шаг назад, колено почти касается асфальта, спина прямая.'},
+    {name:'Быстрая ходьба/лёгкий бег обратно домой',sets:1,reps:'10-15 мин',rest:0,note:'Заминка по пути — не отдельное занятие, а дорога назад.'}]};
 }
 let calMonth=null;
 function renderBody(){
@@ -1223,7 +1223,7 @@ function startWorkout(){
         '</div>'+
         '<button class="btn go" id="setDone">✓ ПОДХОД СДЕЛАН'+(it.rest>0?' → ОТДЫХ':'')+'</button></div>'
       :
-        '<button class="btn go" style="margin-top:14px" id="setDone" '+(isTimed?'style="opacity:.5"':'')+'>'+(isTimed?'⏳ ИДЁТ…':'✓ ПОДХОД СДЕЛАН')+(it.rest>0&&!isTimed?' → ОТДЫХ':'')+'</button>'
+        '<button class="btn go" style="margin-top:14px" id="setDone">'+(isTimed?'⏳ ИДЁТ… (можно закончить раньше)':'✓ ПОДХОД СДЕЛАН')+(it.rest>0&&!isTimed?' → ОТДЫХ':'')+'</button>'
       );
     if(isNumeric){
       shown=target;
@@ -1232,18 +1232,22 @@ function startWorkout(){
       document.getElementById('repPlus').onclick=()=>{shown=Math.round((shown+0.5)*2)/2;valEl.textContent=shown%1?shown.toFixed(1):shown;};
     }
     if(isTimed){
-      // auto-countdown, button unlocks at 0
       const btn=document.getElementById('setDone');
       exTimerIv=setInterval(()=>{
         timerLeft--;
         const el=document.getElementById('exTimerN');if(el)el.textContent=timerLeft;
-        if(timerLeft<=0){clearInterval(exTimerIv);exTimerIv=null;beep();if(btn){btn.textContent='✓ ГОТОВО'+(it.rest>0?' → ОТДЫХ':'');btn.style.opacity='1';}}
+        if(timerLeft<=0){clearInterval(exTimerIv);exTimerIv=null;beep();if(btn)btn.textContent='✓ ГОТОВО'+(it.rest>0?' → ОТДЫХ':'');}
       },1000);
     }
     document.getElementById('setDone').onclick=()=>{
-      if(exTimerIv)return; // timer still running
-      if(isTimed){clearInterval(exTimerIv);exTimerIv=null;}
-      const actual=isNumeric?(shown%1?shown.toFixed(1):''+shown):(''+it.reps);
+      let actual;
+      if(isTimed){
+        const finishedEarly=exTimerIv!==null;
+        if(exTimerIv){clearInterval(exTimerIv);exTimerIv=null;}
+        actual=finishedEarly?(timeSec-timerLeft)+' сек':(''+it.reps);
+      } else {
+        actual=isNumeric?(shown%1?shown.toFixed(1):''+shown):(''+it.reps);
+      }
       results[exIdx].actuals.push(actual);
       const wasLastSet=setIdx>=it.sets-1,wasLastEx=exIdx>=sess.items.length-1;
       const rest=it.rest>0?restFor(it,setIdx):0;
